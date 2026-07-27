@@ -67,10 +67,7 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
     if (isWaitingReveal && myChoice && opponentChoice) {
       roundResolvedRef.current = true;
       const result = computeWinner(myChoice, opponentChoice);
-      const timer = setTimeout(() => {
-        setRounds((prev) => [...prev, { myChoice, oppChoice: opponentChoice, result }]);
-      }, 300);
-      return () => clearTimeout(timer);
+      setRounds((prev) => [...prev, { myChoice, oppChoice: opponentChoice, result }]);
     }
   }, [isWaitingReveal, myChoice, opponentChoice]);
 
