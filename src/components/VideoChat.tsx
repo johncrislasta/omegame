@@ -140,9 +140,11 @@ export default function VideoChat() {
   const handleSkip = useCallback(() => {
     webrtc.cleanup();
     resetState();
-    setStatus("idle");
     partnerIdRef.current = null;
+    stopSearchRef.current = true;
     emit("skip");
+    setStatus("waiting");
+    emit("find-stranger");
   }, [webrtc, resetState, emit]);
 
   const handleFindStranger = useCallback(() => {
