@@ -113,10 +113,10 @@ export default function VideoChat() {
   }, []);
 
   const snapClass: Record<SnapCorner, string> = {
-    "top-right": "top-3 right-3",
-    "top-left": "top-3 left-3",
-    "bottom-right": "bottom-3 right-3",
-    "bottom-left": "bottom-3 left-3",
+    "top-right": "top-3 right-3 origin-top-right",
+    "top-left": "top-3 left-3 origin-top-left",
+    "bottom-right": "bottom-3 right-3 origin-bottom-right",
+    "bottom-left": "bottom-3 left-3 origin-bottom-left",
   };
 
   const handleSkip = useCallback(() => {
@@ -479,7 +479,7 @@ export default function VideoChat() {
               onPointerDown={handleVideoDragStart}
               onPointerMove={handleVideoDragMove}
               onPointerUp={handleVideoDragEnd}
-              className={`absolute ${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,transform] duration-200 ease-out ${pipEnlarged ? "scale-[1.5]" : "scale-100"}`}
+              className={`absolute ${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,transform] duration-200 ease-out ${pipEnlarged ? "scale-[3]" : "scale-100"}`}
             >
               {webrtc.localStream ? (
                 <video
