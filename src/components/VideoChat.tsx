@@ -97,6 +97,10 @@ export default function VideoChat() {
       pipCenterY < midY
         ? pipCenterX < midX ? "top-left" : "top-right"
         : pipCenterX < midX ? "bottom-left" : "bottom-right";
+    target.style.left = "";
+    target.style.top = "";
+    target.style.right = "";
+    target.style.bottom = "";
     setSnapCorner(corner);
     dragRef.current = null;
   }, []);
