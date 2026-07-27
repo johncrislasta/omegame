@@ -150,6 +150,11 @@ export default function VideoChat() {
     emit("find-stranger");
   }, [resetState, emit]);
 
+  const handleStopSearch = useCallback(() => {
+    emit("skip");
+    setStatus("idle");
+  }, [emit]);
+
   const handleSendMessage = useCallback(
     (text: string) => {
       if (!partnerIdRef.current) return;
@@ -515,7 +520,7 @@ export default function VideoChat() {
                     : snapCorner.startsWith("top")
                       ? "top-0 left-0 w-full h-1/2"
                       : "bottom-0 left-0 w-full h-1/2"
-                  : `${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 ${pipEnlarged ? "scale-[3]" : "scale-100"}`
+                  : `${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 ${pipEnlarged ? "scale-[2.5]" : "scale-100"}`
               }`}
             >
               {webrtc.localStream ? (
@@ -578,6 +583,13 @@ export default function VideoChat() {
                 className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-full font-medium transition-colors flex items-center gap-2"
               >
                 <span>▶</span> Start
+              </button>
+            ) : status === "waiting" ? (
+              <button
+                onClick={handleStopSearch}
+                className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full font-medium transition-colors flex items-center gap-2"
+              >
+                <span>⏹</span> Stop
               </button>
             ) : (
               <>
