@@ -30,8 +30,9 @@ export default function VideoChat() {
   const [gameKey, setGameKey] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [snapCorner, setSnapCorner] = useState<SnapCorner>("top-right");
+  const [pipEnlarged, setPipEnlarged] = useState(false);
 
-  const dragRef = useRef<{ startX: number; startY: number; startLeft: number; startTop: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; startLeft: number; startTop: number; moved: boolean } | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
 
   const partnerIdRef = useRef<string | null>(null);
@@ -65,7 +66,7 @@ export default function VideoChat() {
     const target = (e.target as HTMLElement).closest("[data-pip]") as HTMLElement;
     if (!target) return;
     const rect = target.getBoundingClientRect();
-    dragRef.current = { startX: e.clientX, startY: e.clientY, startLeft: rect.left, startTop: rect.top };
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startLeft: rect.left, startTop: rect.top, moved: false };
     target.setPointerCapture(e.pointerId);
   }, []);
 
@@ -74,6 +75,7 @@ export default function VideoChat() {
     const containerRect = videoContainerRef.current.getBoundingClientRect();
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragRef.current.moved = true;
     const target = e.currentTarget as HTMLElement;
     const newLeft = dragRef.current.startLeft - containerRect.left + dx;
     const newTop = dragRef.current.startTop - containerRect.top + dy;
@@ -87,21 +89,26 @@ export default function VideoChat() {
     if (!dragRef.current || !videoContainerRef.current) return;
     const target = (e.target as HTMLElement).closest("[data-pip]") as HTMLElement;
     if (!target) return;
-    const containerRect = videoContainerRef.current.getBoundingClientRect();
-    const pipRect = target.getBoundingClientRect();
-    const pipCenterX = pipRect.left + pipRect.width / 2 - containerRect.left;
-    const pipCenterY = pipRect.top + pipRect.height / 2 - containerRect.top;
-    const midX = containerRect.width / 2;
-    const midY = containerRect.height / 2;
-    const corner: SnapCorner =
-      pipCenterY < midY
-        ? pipCenterX < midX ? "top-left" : "top-right"
-        : pipCenterX < midX ? "bottom-left" : "bottom-right";
-    target.style.left = "";
-    target.style.top = "";
-    target.style.right = "";
-    target.style.bottom = "";
-    setSnapCorner(corner);
+    const moved = dragRef.current.moved;
+    if (!moved) {
+      setPipEnlarged((prev) => !prev);
+    } else {
+      const containerRect = videoContainerRef.current.getBoundingClientRect();
+      const pipRect = target.getBoundingClientRect();
+      const pipCenterX = pipRect.left + pipRect.width / 2 - containerRect.left;
+      const pipCenterY = pipRect.top + pipRect.height / 2 - containerRect.top;
+      const midX = containerRect.width / 2;
+      const midY = containerRect.height / 2;
+      const corner: SnapCorner =
+        pipCenterY < midY
+          ? pipCenterX < midX ? "top-left" : "top-right"
+          : pipCenterX < midX ? "bottom-left" : "bottom-right";
+      target.style.left = "";
+      target.style.top = "";
+      target.style.right = "";
+      target.style.bottom = "";
+      setSnapCorner(corner);
+    }
     dragRef.current = null;
   }, []);
 
@@ -472,7 +479,7 @@ export default function VideoChat() {
               onPointerDown={handleVideoDragStart}
               onPointerMove={handleVideoDragMove}
               onPointerUp={handleVideoDragEnd}
-              className={`absolute ${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom] duration-200 ease-out`}
+              className={`absolute ${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,transform] duration-200 ease-out ${pipEnlarged ? "scale-[1.5]" : "scale-100"}`}
             >
               {webrtc.localStream ? (
                 <video
