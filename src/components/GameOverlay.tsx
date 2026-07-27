@@ -34,9 +34,8 @@ export default function GameOverlay({ gameType, isHost, gameState, onLocalState,
         )}
         {gameType === "rock-paper-scissors" && (
           <RockPaperScissors
-            onStateChange={(choice) => onLocalState({ choice })}
-            opponentChoice={(gameState.choice as "rock" | "paper" | "scissors") || null}
-            isHost={isHost}
+            onStateChange={(state) => onLocalState(state)}
+            gameState={gameState}
             onGameEnd={onGameEnd}
             onGameOver={onGameOver}
           />
