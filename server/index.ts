@@ -1,23 +1,20 @@
 import { Server } from "socket.io";
-import { createServer } from "https";
-import { readFileSync } from "fs";
-import { resolve } from "path";
+import { createServer } from "http";
 
-const certDir = resolve(import.meta.dirname ?? __dirname, "..", "certificates");
-const httpsServer = createServer({
-  key: readFileSync(resolve(certDir, "localhost-key.pem")),
-  cert: readFileSync(resolve(certDir, "localhost.pem")),
-});
+const port = parseInt(process.env.PORT || "3001", 10);
+const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
 
-const io = new Server(httpsServer, {
+const httpServer = createServer();
+
+const io = new Server(httpServer, {
   cors: {
-    origin: true,
+    origin: corsOrigin.split(","),
     methods: ["GET", "POST"],
   },
 });
 
-httpsServer.listen(3001, () => {
-  console.log("[Server] Signaling server running on https port 3001");
+httpServer.listen(port, () => {
+  console.log(`[Server] Signaling server running on http port ${port}`);
 });
 
 interface WaitingUser {
@@ -112,6 +109,18 @@ io.on("connection", (socket) => {
     io.to(to).emit("game-end", { from: socket.id });
   });
 
+  socket.on("game-play-again", ({ to }: { to: string }) => {
+    io.to(to).emit("game-play-again", { from: socket.id });
+  });
+
+  socket.on("game-play-again-accept", ({ to }: { to: string }) => {
+    io.to(to).emit("game-play-again-accept", { from: socket.id });
+  });
+
+  socket.on("game-play-again-reject", ({ to }: { to: string }) => {
+    io.to(to).emit("game-play-again-reject", { from: socket.id });
+  });
+
   socket.on("skip", () => {
     const roomId = userToRoom.get(socket.id);
     if (roomId) {
@@ -149,5 +158,3 @@ io.on("connection", (socket) => {
     }
   });
 });
-
-

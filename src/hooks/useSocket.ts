@@ -5,7 +5,7 @@ import { io, Socket } from "socket.io-client";
 
 const SOCKET_URL =
   typeof window !== "undefined"
-    ? window.location.origin
+    ? process.env.NEXT_PUBLIC_SIGNALING_URL || window.location.origin
     : "http://localhost:3000";
 
 export function useSocket() {

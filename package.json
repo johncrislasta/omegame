@@ -9,6 +9,7 @@
     "dev:tunnel": "npx localtunnel --port 3000",
     "build": "next build",
     "start": "next start",
+    "start:server": "npx tsx server/index.ts",
     "lint": "eslint"
   },
   "dependencies": {

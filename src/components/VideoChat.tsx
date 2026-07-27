@@ -273,7 +273,7 @@ export default function VideoChat() {
         partnerIdRef.current = pid;
         setStatus("connecting");
 
-        webrtc.setupPeerConnection(pid);
+        await webrtc.setupPeerConnection(pid);
         if (isInitiator) {
           try {
             const offer = await webrtc.createOffer();
@@ -291,7 +291,7 @@ export default function VideoChat() {
         partnerIdRef.current = from;
         setStatus("connecting");
 
-        webrtc.setupPeerConnection(from);
+        await webrtc.setupPeerConnection(from);
         try {
           const answer = await webrtc.handleOffer(offer);
           emit("answer", { to: from, answer });

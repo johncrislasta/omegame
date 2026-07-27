@@ -2,12 +2,39 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 
-const ICE_SERVERS: RTCConfiguration = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-  ],
-};
+const FALLBACK_ICE_SERVERS: RTCIceServer[] = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+];
+
+let cachedIceServers: RTCIceServer[] | null = null;
+
+async function fetchIceServers(): Promise<RTCIceServer[]> {
+  if (cachedIceServers) return cachedIceServers;
+
+  const apiKey = process.env.NEXT_PUBLIC_METERED_API_KEY;
+  if (!apiKey) {
+    cachedIceServers = FALLBACK_ICE_SERVERS;
+    return cachedIceServers;
+  }
+
+  try {
+    const res = await fetch(
+      `https://openrelayproject.metered.ca/api/v1/turn/credentials?apiKey=${apiKey}`
+    );
+    if (!res.ok) throw new Error(`TURN API ${res.status}`);
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      cachedIceServers = data;
+      return cachedIceServers;
+    }
+  } catch {
+    console.warn("[WebRTC] Failed to fetch TURN credentials, using STUN only");
+  }
+
+  cachedIceServers = FALLBACK_ICE_SERVERS;
+  return cachedIceServers;
+}
 
 interface UseWebRTCReturn {
   localStream: MediaStream | null;
@@ -34,11 +61,12 @@ export function useWebRTC(
   const pendingCandidates = useRef<RTCIceCandidateInit[]>([]);
 
   const setupPeerConnection = useCallback(
-    (partnerId: string) => {
+    async (partnerId: string) => {
       if (pcRef.current) {
         pcRef.current.close();
       }
-      const pc = new RTCPeerConnection(ICE_SERVERS);
+      const iceServers = await fetchIceServers();
+      const pc = new RTCPeerConnection({ iceServers });
       pcRef.current = pc;
       partnerIdRef.current = partnerId;
       pendingCandidates.current = [];
