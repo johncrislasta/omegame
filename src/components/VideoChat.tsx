@@ -10,6 +10,7 @@ import type { ChatMessage, GameType } from "@/lib/types";
 import { v4 as uuid } from "uuid";
 
 type Status = "idle" | "waiting" | "matched" | "connecting" | "connected" | "disconnected";
+type SnapCorner = "top-right" | "top-left" | "bottom-right" | "bottom-left";
 
 export default function VideoChat() {
   const { emit, on, isConnected } = useSocket();
@@ -28,6 +29,10 @@ export default function VideoChat() {
   const [partnerPendingPlayAgain, setPartnerPendingPlayAgain] = useState(false);
   const [gameKey, setGameKey] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [snapCorner, setSnapCorner] = useState<SnapCorner>("top-right");
+
+  const dragRef = useRef<{ startX: number; startY: number; startLeft: number; startTop: number } | null>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
 
   const partnerIdRef = useRef<string | null>(null);
   const pendingInviteRef = useRef<{ from: string; gameType: string } | null>(null);
@@ -54,6 +59,54 @@ export default function VideoChat() {
     setPartnerPendingPlayAgain(false);
     pendingPlayAgainRef.current = false;
   }, []);
+
+  const handleVideoDragStart = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    const target = (e.target as HTMLElement).closest("[data-pip]") as HTMLElement;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startLeft: rect.left, startTop: rect.top };
+    target.setPointerCapture(e.pointerId);
+  }, []);
+
+  const handleVideoDragMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current || !videoContainerRef.current) return;
+    const containerRect = videoContainerRef.current.getBoundingClientRect();
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    const target = e.currentTarget as HTMLElement;
+    const newLeft = dragRef.current.startLeft - containerRect.left + dx;
+    const newTop = dragRef.current.startTop - containerRect.top + dy;
+    target.style.left = `${newLeft}px`;
+    target.style.top = `${newTop}px`;
+    target.style.right = "auto";
+    target.style.bottom = "auto";
+  }, []);
+
+  const handleVideoDragEnd = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current || !videoContainerRef.current) return;
+    const target = (e.target as HTMLElement).closest("[data-pip]") as HTMLElement;
+    if (!target) return;
+    const containerRect = videoContainerRef.current.getBoundingClientRect();
+    const pipRect = target.getBoundingClientRect();
+    const pipCenterX = pipRect.left + pipRect.width / 2 - containerRect.left;
+    const pipCenterY = pipRect.top + pipRect.height / 2 - containerRect.top;
+    const midX = containerRect.width / 2;
+    const midY = containerRect.height / 2;
+    const corner: SnapCorner =
+      pipCenterY < midY
+        ? pipCenterX < midX ? "top-left" : "top-right"
+        : pipCenterX < midX ? "bottom-left" : "bottom-right";
+    setSnapCorner(corner);
+    dragRef.current = null;
+  }, []);
+
+  const snapClass: Record<SnapCorner, string> = {
+    "top-right": "top-3 right-3",
+    "top-left": "top-3 left-3",
+    "bottom-right": "bottom-3 right-3",
+    "bottom-left": "bottom-3 left-3",
+  };
 
   const handleSkip = useCallback(() => {
     webrtc.cleanup();
@@ -368,7 +421,7 @@ export default function VideoChat() {
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 relative min-h-0">
+          <div ref={videoContainerRef} className="flex-1 relative min-h-0">
             <div className="absolute inset-0 bg-zinc-900 rounded-lg overflow-hidden">
               {webrtc.remoteStream ? (
                 <video
@@ -410,7 +463,13 @@ export default function VideoChat() {
               )}
             </div>
 
-            <div className="absolute top-3 right-3 w-28 h-20 sm:w-36 sm:h-28 bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10">
+            <div
+              data-pip
+              onPointerDown={handleVideoDragStart}
+              onPointerMove={handleVideoDragMove}
+              onPointerUp={handleVideoDragEnd}
+              className={`absolute ${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom] duration-200 ease-out`}
+            >
               {webrtc.localStream ? (
                 <video
                   ref={(el) => {
