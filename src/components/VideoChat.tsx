@@ -12,7 +12,7 @@ import { v4 as uuid } from "uuid";
 type Status = "idle" | "waiting" | "matched" | "connecting" | "connected" | "disconnected";
 
 export default function VideoChat() {
-  const { emit, on } = useSocket();
+  const { emit, on, isConnected } = useSocket();
   const webrtc = useWebRTC(emit);
 
   const [status, setStatus] = useState<Status>("idle");
@@ -344,6 +344,11 @@ export default function VideoChat() {
 
   return (
     <div className="flex-1 flex flex-col bg-zinc-950 min-h-0">
+      {!isConnected && (
+        <div className="bg-yellow-900/50 text-yellow-200 text-center py-2 px-4 text-sm">
+          Connecting to server...
+        </div>
+      )}
       {cameraError && (
         <div className="bg-red-900/50 text-red-200 text-center py-2 px-4 text-sm">
           {cameraError}

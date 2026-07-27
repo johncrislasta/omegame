@@ -1,10 +1,23 @@
 import { Server } from "socket.io";
+import { createServer } from "https";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
-const io = new Server(3001, {
+const certDir = resolve(import.meta.dirname ?? __dirname, "..", "certificates");
+const httpsServer = createServer({
+  key: readFileSync(resolve(certDir, "localhost-key.pem")),
+  cert: readFileSync(resolve(certDir, "localhost.pem")),
+});
+
+const io = new Server(httpsServer, {
   cors: {
     origin: true,
     methods: ["GET", "POST"],
   },
+});
+
+httpsServer.listen(3001, () => {
+  console.log("[Server] Signaling server running on https port 3001");
 });
 
 interface WaitingUser {
@@ -138,4 +151,4 @@ io.on("connection", (socket) => {
   });
 });
 
-console.log("[Server] Signaling server running on port 3001");
+

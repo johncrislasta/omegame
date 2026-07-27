@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev --port 3000 --hostname 0.0.0.0\" \"node --import tsx server/index.ts\"",
-    "dev:next": "next dev --port 3000 --hostname 0.0.0.0",
+    "dev": "concurrently \"next dev --port 3000 --hostname 0.0.0.0 --experimental-https\" \"node --import tsx server/index.ts\"",
+    "dev:next": "next dev --port 3000 --hostname 0.0.0.0 --experimental-https",
     "dev:server": "node --import tsx server/index.ts",
     "dev:tunnel": "npx localtunnel --port 3000",
     "build": "next build",
