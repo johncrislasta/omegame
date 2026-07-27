@@ -1,20 +1,28 @@
-import { createServer } from "https";
-import { readFileSync } from "fs";
+import { createServer as createHttpsServer } from "https";
+import { createServer as createHttpServer } from "http";
+import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import next from "next";
 import { Server } from "socket.io";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "0.0.0.0";
-const port = 3000;
+const port = parseInt(process.env.PORT || "3000", 10);
 
 const certDir = resolve(import.meta.dirname ?? __dirname, "certificates");
-const httpsServer = createServer({
-  key: readFileSync(resolve(certDir, "localhost-key.pem")),
-  cert: readFileSync(resolve(certDir, "localhost.pem")),
-});
+const keyPath = resolve(certDir, "localhost-key.pem");
+const certPath = resolve(certDir, "localhost.pem");
 
-const io = new Server(httpsServer, {
+const useHttps = existsSync(keyPath) && existsSync(certPath);
+
+const server = useHttps
+  ? createHttpsServer({
+      key: readFileSync(keyPath),
+      cert: readFileSync(certPath),
+    })
+  : createHttpServer();
+
+const io = new Server(server, {
   cors: {
     origin: true,
     methods: ["GET", "POST"],
@@ -167,11 +175,11 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
-  httpsServer.on("request", (req, res) => {
+  server.on("request", (req, res) => {
     handle(req, res);
   });
 
-  httpsServer.listen(port, () => {
-    console.log(`> Ready on https://${hostname}:${port}`);
+  server.listen(port, () => {
+    console.log(`> Ready on ${useHttps ? "https" : "http"}://${hostname}:${port}`);
   });
 });

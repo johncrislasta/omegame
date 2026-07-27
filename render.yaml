@@ -1,12 +1,10 @@
 services:
   - type: web
-    name: omegame-signaling
+    name: omegame
     runtime: node
     plan: free
-    buildCommand: npm install
-    startCommand: npx tsx server/index.ts
+    buildCommand: npm install && npm run build
+    startCommand: node --import tsx server.ts
     envVars:
       - key: NODE_ENV
         value: production
-      - key: CORS_ORIGIN
-        sync: false
