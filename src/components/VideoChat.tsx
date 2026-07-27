@@ -27,6 +27,7 @@ export default function VideoChat() {
   const [pendingPlayAgain, setPendingPlayAgain] = useState(false);
   const [partnerPendingPlayAgain, setPartnerPendingPlayAgain] = useState(false);
   const [gameKey, setGameKey] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const partnerIdRef = useRef<string | null>(null);
   const pendingInviteRef = useRef<{ from: string; gameType: string } | null>(null);
@@ -36,6 +37,10 @@ export default function VideoChat() {
   useEffect(() => {
     gameTypeRef.current = gameType;
   }, [gameType]);
+
+  useEffect(() => {
+    if (showChat) setUnreadCount(0);
+  }, [showChat]);
 
   const resetState = useCallback(() => {
     setChatMessages([]);
@@ -232,6 +237,7 @@ export default function VideoChat() {
           ...prev,
           { id: uuid(), text: message, sender: "stranger", timestamp: Date.now() },
         ]);
+        setUnreadCount((prev) => prev + 1);
       })
     );
 
@@ -290,9 +296,10 @@ export default function VideoChat() {
     cleanups.push(
       on("game-play-again-accept", () => {
         if (pendingPlayAgainRef.current && gameTypeRef.current) {
-          setPendingPlayAgain(false);
-          setPartnerPendingPlayAgain(false);
-          pendingPlayAgainRef.current = false;
+    setPendingPlayAgain(false);
+    setPartnerPendingPlayAgain(false);
+    pendingPlayAgainRef.current = false;
+    setUnreadCount(0);
           setGameOver(false);
           setGameState({});
           setGameKey((k) => k + 1);
@@ -468,11 +475,16 @@ export default function VideoChat() {
                     )}
                     <button
                       onClick={() => setShowChat(!showChat)}
-                      className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 relative ${
                         showChat ? "bg-blue-600 text-white" : "bg-zinc-700 hover:bg-zinc-600 text-white"
                       }`}
                     >
                       💬 Chat
+                      {!showChat && unreadCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                          {unreadCount}
+                        </span>
+                      )}
                     </button>
                   </>
                 )}
