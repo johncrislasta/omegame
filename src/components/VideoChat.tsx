@@ -31,6 +31,8 @@ export default function VideoChat() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [snapCorner, setSnapCorner] = useState<SnapCorner>("top-right");
   const [pipEnlarged, setPipEnlarged] = useState(false);
+  const [pipPinned, setPipPinned] = useState(false);
+  const [containerLandscape, setContainerLandscape] = useState(true);
 
   const dragRef = useRef<{ startX: number; startY: number; startLeft: number; startTop: number; moved: boolean } | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
@@ -47,6 +49,21 @@ export default function VideoChat() {
   useEffect(() => {
     if (showChat) setUnreadCount(0);
   }, [showChat]);
+
+  useEffect(() => {
+    const el = videoContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setContainerLandscape(width >= height);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!pipEnlarged) setPipPinned(false);
+  }, [pipEnlarged]);
 
   const resetState = useCallback(() => {
     setChatMessages([]);
@@ -476,10 +493,20 @@ export default function VideoChat() {
 
             <div
               data-pip
-              onPointerDown={handleVideoDragStart}
-              onPointerMove={handleVideoDragMove}
-              onPointerUp={handleVideoDragEnd}
-              className={`absolute ${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,transform] duration-200 ease-out ${pipEnlarged ? "scale-[3]" : "scale-100"}`}
+              onPointerDown={pipPinned ? undefined : handleVideoDragStart}
+              onPointerMove={pipPinned ? undefined : handleVideoDragMove}
+              onPointerUp={pipPinned ? undefined : handleVideoDragEnd}
+              className={`absolute bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,width,height,transform] duration-200 ease-out ${
+                pipPinned
+                  ? containerLandscape
+                    ? snapCorner.endsWith("left")
+                      ? "top-0 left-0 w-1/2 h-full"
+                      : "top-0 right-0 w-1/2 h-full"
+                    : snapCorner.startsWith("top")
+                      ? "top-0 left-0 w-full h-1/2"
+                      : "bottom-0 left-0 w-full h-1/2"
+                  : `${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 ${pipEnlarged ? "scale-[3]" : "scale-100"}`
+              }`}
             >
               {webrtc.localStream ? (
                 <video
@@ -498,6 +525,26 @@ export default function VideoChat() {
                 <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">
                   Loading...
                 </div>
+              )}
+              {pipEnlarged && !pipPinned && (
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setPipPinned(true)}
+                  className="absolute bottom-1 right-1 w-7 h-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white text-xs transition-colors"
+                  title="Pin to half"
+                >
+                  📌
+                </button>
+              )}
+              {pipPinned && (
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setPipPinned(false)}
+                  className="absolute top-1 right-1 w-7 h-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white text-xs transition-colors z-20"
+                  title="Unpin"
+                >
+                  📌
+                </button>
               )}
             </div>
 
