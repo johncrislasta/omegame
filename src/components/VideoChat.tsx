@@ -450,7 +450,17 @@ export default function VideoChat() {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         <div className="flex-1 flex flex-col min-h-0">
           <div ref={videoContainerRef} className="flex-1 relative min-h-0">
-            <div className="absolute inset-0 bg-zinc-900 rounded-lg overflow-hidden">
+            <div className={`absolute bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${
+              pipPinned
+                ? containerLandscape
+                  ? snapCorner.endsWith("left")
+                    ? "top-0 bottom-0 left-1/2 right-0"
+                    : "top-0 bottom-0 left-0 right-1/2"
+                  : snapCorner.startsWith("top")
+                    ? "top-1/2 bottom-0 left-0 right-0"
+                    : "top-0 bottom-1/2 left-0 right-0"
+                : "inset-0"
+            }`}>
               {webrtc.remoteStream ? (
                 <video
                   ref={(el) => {
