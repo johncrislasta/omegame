@@ -112,6 +112,10 @@ export default function VideoChat() {
     }
     setGameType(null);
     setGameState({});
+    setGameOver(false);
+    setPendingPlayAgain(false);
+    setPartnerPendingPlayAgain(false);
+    pendingPlayAgainRef.current = false;
   }, [emit]);
 
   const handleGameOver = useCallback(() => {
