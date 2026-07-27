@@ -14,7 +14,7 @@ export default function Home() {
         }`}
       >
         <h1 className="text-6xl sm:text-8xl font-bold text-white mb-2 tracking-tight">
-          Random<span className="text-purple-500">Play</span>
+          Ome<span className="text-purple-500">Game</span>
         </h1>
         <p className="text-zinc-400 text-lg sm:text-xl mb-12 max-w-md mx-auto">
           Meet strangers. Play games. Have fun.

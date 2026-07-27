@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RandomPlay - Meet Strangers, Play Games",
+  title: "OmeGame - Meet Strangers, Play Games",
   description: "Omegle-style video chat with social games. Meet strangers and play Tic Tac Toe, Rock Paper Scissors, and more.",
 };
 
