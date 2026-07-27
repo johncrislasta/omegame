@@ -26,6 +26,12 @@ const waitingQueue: WaitingUser[] = [];
 const activeRooms = new Map<string, { user1: string; user2: string }>();
 const userToRoom = new Map<string, string>();
 
+let onlineCount = 0;
+
+function broadcastOnlineCount() {
+  io.emit("online-count", onlineCount);
+}
+
 function findPartner(socketId: string) {
   const now = Date.now();
 
@@ -53,6 +59,8 @@ function findPartner(socketId: string) {
 }
 
 io.on("connection", (socket) => {
+  onlineCount++;
+  broadcastOnlineCount();
   console.log(`[Server] User connected: ${socket.id}`);
 
   socket.on("find-stranger", () => {
@@ -140,6 +148,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    onlineCount = Math.max(0, onlineCount - 1);
+    broadcastOnlineCount();
     console.log(`[Server] User disconnected: ${socket.id}`);
 
     const queueIdx = waitingQueue.findIndex((w) => w.socketId === socket.id);

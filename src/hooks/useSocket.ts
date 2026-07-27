@@ -11,6 +11,7 @@ const SOCKET_URL =
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [onlineCount, setOnlineCount] = useState(0);
 
   useEffect(() => {
     const socket = io(SOCKET_URL, {
@@ -20,6 +21,7 @@ export function useSocket() {
 
     socket.on("connect", () => setIsConnected(true));
     socket.on("disconnect", () => setIsConnected(false));
+    socket.on("online-count", (count: number) => setOnlineCount(count));
 
     return () => {
       socket.disconnect();
@@ -44,6 +46,7 @@ export function useSocket() {
 
   return {
     isConnected,
+    onlineCount,
     emit,
     on,
     getSocketId,

@@ -29,6 +29,12 @@ const io = new Server(server, {
   },
 });
 
+let onlineCount = 0;
+
+function broadcastOnlineCount() {
+  io.emit("online-count", onlineCount);
+}
+
 interface WaitingUser {
   socketId: string;
   joinedAt: number;
@@ -65,6 +71,8 @@ function findPartner(socketId: string) {
 }
 
 io.on("connection", (socket) => {
+  onlineCount++;
+  broadcastOnlineCount();
   console.log(`[Server] User connected: ${socket.id}`);
 
   socket.on("find-stranger", () => {
@@ -152,6 +160,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    onlineCount = Math.max(0, onlineCount - 1);
+    broadcastOnlineCount();
     console.log(`[Server] User disconnected: ${socket.id}`);
 
     const queueIdx = waitingQueue.findIndex((w) => w.socketId === socket.id);

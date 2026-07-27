@@ -1,10 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { io } from "socket.io-client";
+
+const SOCKET_URL =
+  typeof window !== "undefined"
+    ? process.env.NEXT_PUBLIC_SIGNALING_URL || window.location.origin
+    : "http://localhost:3000";
 
 export default function Home() {
   const [mounted] = useState(true);
+  const [onlineCount, setOnlineCount] = useState(0);
+
+  useEffect(() => {
+    const socket = io(SOCKET_URL, { transports: ["websocket", "polling"] });
+    socket.on("online-count", (count: number) => setOnlineCount(count));
+    return () => { socket.disconnect(); };
+  }, []);
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6">
@@ -16,9 +29,16 @@ export default function Home() {
         <h1 className="text-6xl sm:text-8xl font-bold text-white mb-2 tracking-tight">
           Ome<span className="text-purple-500">Game</span>
         </h1>
-        <p className="text-zinc-400 text-lg sm:text-xl mb-12 max-w-md mx-auto">
+        <p className="text-zinc-400 text-lg sm:text-xl mb-4 max-w-md mx-auto">
           Meet strangers. Play games. Have fun.
         </p>
+
+        {onlineCount > 0 && (
+          <div className="flex items-center justify-center gap-1.5 text-zinc-500 text-sm mb-10">
+            <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            {onlineCount} {onlineCount === 1 ? "person" : "people"} online
+          </div>
+        )}
 
         <Link
           href="/chat"
