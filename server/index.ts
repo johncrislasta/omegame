@@ -123,12 +123,11 @@ io.on("connection", (socket) => {
         userToRoom.delete(room.user2);
         activeRooms.delete(roomId);
       }
+      socket.emit("disconnected");
     }
 
     const queueIdx = waitingQueue.findIndex((w) => w.socketId === socket.id);
     if (queueIdx !== -1) waitingQueue.splice(queueIdx, 1);
-
-    socket.emit("disconnected");
   });
 
   socket.on("disconnect", () => {
