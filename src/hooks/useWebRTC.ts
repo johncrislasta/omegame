@@ -65,27 +65,38 @@ export function useWebRTC(
     [socketEmit]
   );
 
+  const waitForLocalStream = useCallback((): Promise<MediaStream> => {
+    if (localStreamRef.current) return Promise.resolve(localStreamRef.current);
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      const check = () => {
+        if (localStreamRef.current) return resolve(localStreamRef.current);
+        if (Date.now() - start > 10000) return reject(new Error("Timed out waiting for local stream"));
+        setTimeout(check, 50);
+      };
+      check();
+    });
+  }, []);
+
   const createOffer = useCallback(async (): Promise<RTCSessionDescriptionInit> => {
     const pc = pcRef.current;
     if (!pc) throw new Error("No peer connection");
 
-    const stream = localStreamRef.current;
-    if (!stream) throw new Error("No local stream");
+    const stream = await waitForLocalStream();
 
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     return offer;
-  }, []);
+  }, [waitForLocalStream]);
 
   const handleOffer = useCallback(
     async (offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> => {
       const pc = pcRef.current;
       if (!pc) throw new Error("No peer connection");
 
-      const stream = localStreamRef.current;
-      if (!stream) throw new Error("No local stream");
+      const stream = await waitForLocalStream();
 
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
       await pc.setRemoteDescription(new RTCSessionDescription(offer));

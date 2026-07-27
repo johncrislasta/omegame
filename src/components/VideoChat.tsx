@@ -417,6 +417,10 @@ export default function VideoChat() {
         partnerIdRef.current = null;
         webrtc.cleanup();
         resetState();
+        setTimeout(() => {
+          emit("find-stranger");
+          setStatus("waiting");
+        }, 300);
       })
     );
 
