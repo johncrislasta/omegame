@@ -41,6 +41,7 @@ export default function VideoChat() {
   const pendingInviteRef = useRef<{ from: string; gameType: string } | null>(null);
   const pendingPlayAgainRef = useRef(false);
   const gameTypeRef = useRef<GameType>(null);
+  const stopSearchRef = useRef(false);
 
   useEffect(() => {
     gameTypeRef.current = gameType;
@@ -145,12 +146,14 @@ export default function VideoChat() {
   }, [webrtc, resetState, emit]);
 
   const handleFindStranger = useCallback(() => {
+    stopSearchRef.current = false;
     resetState();
     setStatus("waiting");
     emit("find-stranger");
   }, [resetState, emit]);
 
   const handleStopSearch = useCallback(() => {
+    stopSearchRef.current = true;
     emit("skip");
     setStatus("idle");
   }, [emit]);
@@ -386,6 +389,7 @@ export default function VideoChat() {
     setPartnerPendingPlayAgain(false);
     pendingPlayAgainRef.current = false;
     setUnreadCount(0);
+    stopSearchRef.current = false;
           setGameOver(false);
           setGameState({});
           setGameKey((k) => k + 1);
@@ -416,6 +420,10 @@ export default function VideoChat() {
 
     cleanups.push(
       on("disconnected", () => {
+        if (stopSearchRef.current) {
+          stopSearchRef.current = false;
+          return;
+        }
         setStatus("disconnected");
       })
     );
