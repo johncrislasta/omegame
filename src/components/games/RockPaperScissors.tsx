@@ -145,7 +145,7 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="text-white text-lg font-bold drop-shadow-lg">
-        Round {currentRound + 1} — You: {myScore} | Them: {oppScore}
+        Round {showResult ? currentRound : currentRound + 1} — You: {myScore} | Them: {oppScore}
       </div>
 
       {!showResult && !matchOver && (
