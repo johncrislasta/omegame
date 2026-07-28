@@ -8,7 +8,7 @@ import GameMenu from "./GameMenu";
 import GameOverlay from "./GameOverlay";
 import ChatBox from "./ChatBox";
 import type { ChatMessage, GameType } from "@/lib/types";
-import { countryToFlag } from "@/lib/countryFlag";
+import { countryFlagUrl } from "@/lib/countryFlag";
 import { v4 as uuid } from "uuid";
 
 type Status = "idle" | "waiting" | "matched" | "connecting" | "connected" | "disconnected";
@@ -514,9 +514,9 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
                     playsInline
                     className="w-full h-full object-cover"
                   />
-                  {partnerCountry && (
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1 text-xl z-10" title={partnerCountry}>
-                      {countryToFlag(partnerCountry)}
+                  {partnerCountry && countryFlagUrl(partnerCountry) && (
+                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-1 z-10" title={partnerCountry}>
+                      <img src={countryFlagUrl(partnerCountry)} alt={partnerCountry} className="w-6 h-[15px] rounded-sm" />
                     </div>
                   )}
                   </>
@@ -648,9 +648,9 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
                 <div className="text-zinc-400 text-lg">Stranger has left</div>
               </div>
             )}
-            {status === "connected" && partnerCountry && (
-              <div className="absolute top-3 left-3 bg-zinc-800 rounded-full px-2 py-1 text-xl z-10" title={partnerCountry}>
-                {countryToFlag(partnerCountry)}
+            {status === "connected" && partnerCountry && countryFlagUrl(partnerCountry) && (
+              <div className="absolute top-3 left-3 bg-zinc-800 rounded-full px-1.5 py-1 z-10" title={partnerCountry}>
+                <img src={countryFlagUrl(partnerCountry)} alt={partnerCountry} className="w-6 h-[15px] rounded-sm" />
               </div>
             )}
                 {status === "connected" && (
