@@ -8,6 +8,7 @@ import GameMenu from "./GameMenu";
 import GameOverlay from "./GameOverlay";
 import ChatBox from "./ChatBox";
 import type { ChatMessage, GameType } from "@/lib/types";
+import { countryToFlag } from "@/lib/countryFlag";
 import { v4 as uuid } from "uuid";
 
 type Status = "idle" | "waiting" | "matched" | "connecting" | "connected" | "disconnected";
@@ -515,7 +516,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
                   />
                   {partnerCountry && (
                     <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1 text-xl z-10" title={partnerCountry}>
-                      {String.fromCodePoint(...[...partnerCountry.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)))}
+                      {countryToFlag(partnerCountry)}
                     </div>
                   )}
                   </>
@@ -649,7 +650,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
             )}
             {status === "connected" && partnerCountry && (
               <div className="absolute top-3 left-3 bg-zinc-800 rounded-full px-2 py-1 text-xl z-10" title={partnerCountry}>
-                {String.fromCodePoint(...[...partnerCountry.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)))}
+                {countryToFlag(partnerCountry)}
               </div>
             )}
                 {status === "connected" && (
