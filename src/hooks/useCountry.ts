@@ -12,10 +12,10 @@ export function useCountry() {
       return;
     }
 
-    fetch("https://ipapi.co/json/")
+    fetch("https://ipwho.is/")
       .then((res) => res.json())
       .then((data) => {
-        if (data.country_code) {
+        if (data.success && data.country_code) {
           sessionStorage.setItem("country", data.country_code);
           setCountry(data.country_code);
         }

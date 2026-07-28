@@ -73,12 +73,16 @@ io.on("connection", (socket) => {
   broadcastOnlineCount();
   console.log(`[Server] User connected: ${socket.id}`);
 
+  socket.on("set-country", (country: string) => {
+    if (typeof country === "string" && country.length === 2) {
+      userCountry.set(socket.id, country.toUpperCase());
+    }
+  });
+
   socket.on("find-stranger", (data?: { mode?: string; country?: string }) => {
     const mode = data?.mode === "text" ? "text" : "video";
-    const country = typeof data?.country === "string" ? data.country : undefined;
-    if (country) userCountry.set(socket.id, country);
     console.log(`[Server] ${socket.id} looking for stranger (${mode})`);
-    const result = findPartner(socket.id, mode, country);
+    const result = findPartner(socket.id, mode, userCountry.get(socket.id));
 
     if (result) {
       io.to(result.user1).emit("matched", { partnerId: result.user2, roomId: result.roomId, isInitiator: true, partnerCountry: result.country2 });
