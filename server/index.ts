@@ -20,9 +20,10 @@ httpServer.listen(port, () => {
 interface WaitingUser {
   socketId: string;
   joinedAt: number;
+  mode: "video" | "text";
 }
 
-const waitingQueue: WaitingUser[] = [];
+const waitingQueues: { video: WaitingUser[]; text: WaitingUser[] } = { video: [], text: [] };
 const activeRooms = new Map<string, { user1: string; user2: string }>();
 const userToRoom = new Map<string, string>();
 
@@ -32,15 +33,16 @@ function broadcastOnlineCount() {
   io.emit("online-count", onlineCount);
 }
 
-function findPartner(socketId: string) {
+function findPartner(socketId: string, mode: "video" | "text") {
   const now = Date.now();
+  const queue = waitingQueues[mode];
 
-  const filtered = waitingQueue.filter((w) => w.socketId !== socketId);
+  const filtered = queue.filter((w) => w.socketId !== socketId);
 
   if (filtered.length > 0) {
     const partner = filtered[0];
-    waitingQueue.length = 0;
-    waitingQueue.push(...filtered.filter((w) => w.socketId !== partner.socketId));
+    queue.length = 0;
+    queue.push(...filtered.filter((w) => w.socketId !== partner.socketId));
 
     const roomId = `room-${partner.socketId}-${socketId}`;
     activeRooms.set(roomId, { user1: partner.socketId, user2: socketId });
@@ -50,9 +52,9 @@ function findPartner(socketId: string) {
     return { user1: partner.socketId, user2: socketId, roomId };
   }
 
-  const alreadyWaiting = waitingQueue.some((w) => w.socketId === socketId);
+  const alreadyWaiting = queue.some((w) => w.socketId === socketId);
   if (!alreadyWaiting) {
-    waitingQueue.push({ socketId, joinedAt: now });
+    queue.push({ socketId, joinedAt: now, mode });
   }
 
   return null;
@@ -63,9 +65,10 @@ io.on("connection", (socket) => {
   broadcastOnlineCount();
   console.log(`[Server] User connected: ${socket.id}`);
 
-  socket.on("find-stranger", () => {
-    console.log(`[Server] ${socket.id} looking for stranger`);
-    const result = findPartner(socket.id);
+  socket.on("find-stranger", (data?: { mode?: string }) => {
+    const mode = data?.mode === "text" ? "text" : "video";
+    console.log(`[Server] ${socket.id} looking for stranger (${mode})`);
+    const result = findPartner(socket.id, mode);
 
     if (result) {
       io.to(result.user1).emit("matched", { partnerId: result.user2, roomId: result.roomId, isInitiator: true });
@@ -143,8 +146,10 @@ io.on("connection", (socket) => {
       socket.emit("disconnected");
     }
 
-    const queueIdx = waitingQueue.findIndex((w) => w.socketId === socket.id);
-    if (queueIdx !== -1) waitingQueue.splice(queueIdx, 1);
+    for (const q of [waitingQueues.video, waitingQueues.text]) {
+      const idx = q.findIndex((w) => w.socketId === socket.id);
+      if (idx !== -1) q.splice(idx, 1);
+    }
   });
 
   socket.on("disconnect", () => {
@@ -152,8 +157,10 @@ io.on("connection", (socket) => {
     broadcastOnlineCount();
     console.log(`[Server] User disconnected: ${socket.id}`);
 
-    const queueIdx = waitingQueue.findIndex((w) => w.socketId === socket.id);
-    if (queueIdx !== -1) waitingQueue.splice(queueIdx, 1);
+    for (const q of [waitingQueues.video, waitingQueues.text]) {
+      const idx = q.findIndex((w) => w.socketId === socket.id);
+      if (idx !== -1) q.splice(idx, 1);
+    }
 
     const roomId = userToRoom.get(socket.id);
     if (roomId) {

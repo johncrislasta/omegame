@@ -40,15 +40,24 @@ export default function Home() {
           </div>
         )}
 
-        <Link
-          href="/chat"
-          className="inline-flex items-center gap-3 px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white text-lg font-semibold rounded-full transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25"
-        >
-          <span className="text-2xl">▶</span>
-          Start Chatting
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+          <Link
+            href="/chat?mode=video"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white text-lg font-semibold rounded-full transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25"
+          >
+            <span className="text-2xl">🎥</span>
+            Video Chat
+          </Link>
+          <Link
+            href="/chat?mode=text"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-zinc-800 hover:bg-zinc-700 text-white text-lg font-semibold rounded-full border border-zinc-600 hover:border-zinc-500 transition-all hover:scale-105"
+          >
+            <span className="text-2xl">💬</span>
+            Text Chat
+          </Link>
+        </div>
 
-        <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-lg mx-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-lg mx-auto">
           {[
             { emoji: "🎥", label: "Video Chat" },
             { emoji: "❌", label: "Tic Tac Toe" },

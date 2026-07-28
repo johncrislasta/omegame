@@ -12,7 +12,11 @@ import { v4 as uuid } from "uuid";
 type Status = "idle" | "waiting" | "matched" | "connecting" | "connected" | "disconnected";
 type SnapCorner = "top-right" | "top-left" | "bottom-right" | "bottom-left";
 
-export default function VideoChat() {
+interface VideoChatProps {
+  mode?: "video" | "text";
+}
+
+export default function VideoChat({ mode = "video" }: VideoChatProps) {
   const { emit, on, isConnected } = useSocket();
   const webrtc = useWebRTC(emit);
 
@@ -144,15 +148,15 @@ export default function VideoChat() {
     stopSearchRef.current = true;
     emit("skip");
     setStatus("waiting");
-    emit("find-stranger");
-  }, [webrtc, resetState, emit]);
+    emit("find-stranger", { mode });
+  }, [webrtc, resetState, emit, mode]);
 
   const handleFindStranger = useCallback(() => {
     stopSearchRef.current = false;
     resetState();
     setStatus("waiting");
-    emit("find-stranger");
-  }, [resetState, emit]);
+    emit("find-stranger", { mode });
+  }, [resetState, emit, mode]);
 
   const handleStopSearch = useCallback(() => {
     stopSearchRef.current = true;
@@ -273,6 +277,11 @@ export default function VideoChat() {
         partnerIdRef.current = pid;
         setStatus("connecting");
 
+        if (mode === "text") {
+          setStatus("connected");
+          return;
+        }
+
         await webrtc.setupPeerConnection(pid);
         if (isInitiator) {
           try {
@@ -287,6 +296,7 @@ export default function VideoChat() {
 
     cleanups.push(
       on("offer", async (data: unknown) => {
+        if (mode === "text") return;
         const { from, offer } = data as { from: string; offer: RTCSessionDescriptionInit };
         partnerIdRef.current = from;
         setStatus("connecting");
@@ -304,6 +314,7 @@ export default function VideoChat() {
 
     cleanups.push(
       on("answer", async (data: unknown) => {
+        if (mode === "text") return;
         const { answer } = data as { answer: RTCSessionDescriptionInit };
         try {
           await webrtc.handleAnswer(answer);
@@ -316,6 +327,7 @@ export default function VideoChat() {
 
     cleanups.push(
       on("ice-candidate", async (data: unknown) => {
+        if (mode === "text") return;
         const { candidate } = data as { candidate: RTCIceCandidateInit };
         await webrtc.addIceCandidate(candidate);
       })
@@ -415,10 +427,10 @@ export default function VideoChat() {
       on("strangerDisconnected", () => {
         setStatus("disconnected");
         partnerIdRef.current = null;
-        webrtc.cleanup();
+        if (mode === "video") webrtc.cleanup();
         resetState();
         setTimeout(() => {
-          emit("find-stranger");
+          emit("find-stranger", { mode });
           setStatus("waiting");
         }, 300);
       })
@@ -437,9 +449,10 @@ export default function VideoChat() {
     return () => {
       cleanups.forEach((fn) => fn());
     };
-  }, [on, webrtc, emit, resetState]);
+  }, [on, webrtc, emit, resetState, mode]);
 
   useEffect(() => {
+    if (mode === "text") return;
     if (!webrtc.localStream) {
       if (!navigator.mediaDevices?.getUserMedia) {
         setCameraError("Camera requires HTTPS. Access the app via HTTPS or localhost.");
@@ -451,7 +464,7 @@ export default function VideoChat() {
         setCameraError("Camera/microphone access denied. Please allow access and refresh.");
       });
     }
-  }, [webrtc]);
+  }, [webrtc, mode]);
 
   return (
     <div className="flex-1 flex flex-col bg-zinc-950 min-h-0">
@@ -468,127 +481,178 @@ export default function VideoChat() {
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         <div className="flex-1 flex flex-col min-h-0">
-          <div ref={videoContainerRef} className="flex-1 relative min-h-0">
-            <div className={`absolute bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${
-              pipPinned
-                ? containerLandscape
-                  ? snapCorner.endsWith("left")
-                    ? "top-0 bottom-0 left-1/2 right-0"
-                    : "top-0 bottom-0 left-0 right-1/2"
-                  : snapCorner.startsWith("top")
-                    ? "top-1/2 bottom-0 left-0 right-0"
-                    : "top-0 bottom-1/2 left-0 right-0"
-                : "inset-0"
-            }`}>
-              {webrtc.remoteStream ? (
-                <video
-                  ref={(el) => {
-                    if (el) el.srcObject = webrtc.remoteStream;
-                  }}
-                  autoPlay
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  {status === "waiting" && (
-                    <div className="text-center">
-                      <div className="text-4xl mb-4 animate-spin">🔍</div>
-                      <div className="text-zinc-400 text-lg">Looking for someone...</div>
-                      <div className="text-zinc-600 text-sm mt-2">This may take a moment</div>
-                    </div>
-                  )}
-                  {status === "connecting" && (
-                    <div className="text-center">
-                      <div className="text-4xl mb-4 animate-pulse">⚡</div>
-                      <div className="text-zinc-400 text-lg">Connecting...</div>
-                    </div>
-                  )}
-                  {status === "idle" && (
-                    <div className="text-center">
-                      <div className="text-6xl mb-4">🎯</div>
-                      <div className="text-zinc-400 text-lg">Ready to meet someone?</div>
-                    </div>
-                  )}
-                  {status === "disconnected" && (
-                    <div className="text-center">
-                      <div className="text-4xl mb-4">👋</div>
-                      <div className="text-zinc-400 text-lg">Stranger has left</div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div
-              data-pip
-              onPointerDown={pipPinned ? undefined : handleVideoDragStart}
-              onPointerMove={pipPinned ? undefined : handleVideoDragMove}
-              onPointerUp={pipPinned ? undefined : handleVideoDragEnd}
-              className={`absolute bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,width,height,transform] duration-200 ease-out ${
+          {mode === "video" ? (
+            <div ref={videoContainerRef} className="flex-1 relative min-h-0">
+              <div className={`absolute bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${
                 pipPinned
                   ? containerLandscape
                     ? snapCorner.endsWith("left")
-                      ? "top-0 left-0 w-1/2 h-full"
-                      : "top-0 right-0 w-1/2 h-full"
+                      ? "top-0 bottom-0 left-1/2 right-0"
+                      : "top-0 bottom-0 left-0 right-1/2"
                     : snapCorner.startsWith("top")
-                      ? "top-0 left-0 w-full h-1/2"
-                      : "bottom-0 left-0 w-full h-1/2"
-                  : `${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 ${pipEnlarged ? "scale-[2.5]" : "scale-100"}`
-              }`}
-            >
-              {webrtc.localStream ? (
-                <video
-                  ref={(el) => {
-                    if (el && webrtc.localStream && el.srcObject !== webrtc.localStream) {
-                      el.srcObject = webrtc.localStream;
-                    }
-                  }}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                  style={{ transform: "scaleX(-1)" }}
+                      ? "top-1/2 bottom-0 left-0 right-0"
+                      : "top-0 bottom-1/2 left-0 right-0"
+                  : "inset-0"
+              }`}>
+                {webrtc.remoteStream ? (
+                  <video
+                    ref={(el) => {
+                      if (el) el.srcObject = webrtc.remoteStream;
+                    }}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    {status === "waiting" && (
+                      <div className="text-center">
+                        <div className="text-4xl mb-4 animate-spin">🔍</div>
+                        <div className="text-zinc-400 text-lg">Looking for someone...</div>
+                        <div className="text-zinc-600 text-sm mt-2">This may take a moment</div>
+                      </div>
+                    )}
+                    {status === "connecting" && (
+                      <div className="text-center">
+                        <div className="text-4xl mb-4 animate-pulse">⚡</div>
+                        <div className="text-zinc-400 text-lg">Connecting...</div>
+                      </div>
+                    )}
+                    {status === "idle" && (
+                      <div className="text-center">
+                        <div className="text-6xl mb-4">🎯</div>
+                        <div className="text-zinc-400 text-lg">Ready to meet someone?</div>
+                      </div>
+                    )}
+                    {status === "disconnected" && (
+                      <div className="text-center">
+                        <div className="text-4xl mb-4">👋</div>
+                        <div className="text-zinc-400 text-lg">Stranger has left</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div
+                data-pip
+                onPointerDown={pipPinned ? undefined : handleVideoDragStart}
+                onPointerMove={pipPinned ? undefined : handleVideoDragMove}
+                onPointerUp={pipPinned ? undefined : handleVideoDragEnd}
+                className={`absolute bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,width,height,transform] duration-200 ease-out ${
+                  pipPinned
+                    ? containerLandscape
+                      ? snapCorner.endsWith("left")
+                        ? "top-0 left-0 w-1/2 h-full"
+                        : "top-0 right-0 w-1/2 h-full"
+                      : snapCorner.startsWith("top")
+                        ? "top-0 left-0 w-full h-1/2"
+                        : "bottom-0 left-0 w-full h-1/2"
+                    : `${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 ${pipEnlarged ? "scale-[2.5]" : "scale-100"}`
+                }`}
+              >
+                {webrtc.localStream ? (
+                  <video
+                    ref={(el) => {
+                      if (el && webrtc.localStream && el.srcObject !== webrtc.localStream) {
+                        el.srcObject = webrtc.localStream;
+                      }
+                    }}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                    style={{ transform: "scaleX(-1)" }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">
+                    Loading...
+                  </div>
+                )}
+                {pipEnlarged && !pipPinned && (
+                  <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => setPipPinned(true)}
+                    className="absolute bottom-1 right-1 w-7 h-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white text-xs transition-colors"
+                    title="Pin to half"
+                  >
+                    📌
+                  </button>
+                )}
+                {pipPinned && (
+                  <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => setPipPinned(false)}
+                    className="absolute top-1 right-1 w-7 h-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white text-xs transition-colors z-20"
+                    title="Unpin"
+                  >
+                    📌
+                  </button>
+                )}
+              </div>
+
+              {gameType && (
+                <GameOverlay
+                  key={gameKey}
+                  gameType={gameType}
+                  isHost={isGameHost}
+                  gameState={gameState}
+                  onLocalState={handleGameLocalState}
+                  onGameEnd={handleGameEnd}
+                  onGameOver={handleGameOver}
                 />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">
-                  Loading...
-                </div>
-              )}
-              {pipEnlarged && !pipPinned && (
-                <button
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => setPipPinned(true)}
-                  className="absolute bottom-1 right-1 w-7 h-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white text-xs transition-colors"
-                  title="Pin to half"
-                >
-                  📌
-                </button>
-              )}
-              {pipPinned && (
-                <button
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => setPipPinned(false)}
-                  className="absolute top-1 right-1 w-7 h-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white text-xs transition-colors z-20"
-                  title="Unpin"
-                >
-                  📌
-                </button>
               )}
             </div>
+          ) : (
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-0">
+                {status === "waiting" && (
+                  <div className="text-center">
+                    <div className="text-4xl mb-4 animate-spin">🔍</div>
+                    <div className="text-zinc-400 text-lg">Looking for someone...</div>
+                    <div className="text-zinc-600 text-sm mt-2">This may take a moment</div>
+                  </div>
+                )}
+                {status === "connecting" && (
+                  <div className="text-center">
+                    <div className="text-4xl mb-4 animate-pulse">⚡</div>
+                    <div className="text-zinc-400 text-lg">Connecting...</div>
+                  </div>
+                )}
+                {status === "idle" && (
+                  <div className="text-center">
+                    <div className="text-6xl mb-4">💬</div>
+                    <div className="text-zinc-400 text-lg">Ready to chat with someone?</div>
+                  </div>
+                )}
+                {status === "disconnected" && (
+                  <div className="text-center">
+                    <div className="text-4xl mb-4">👋</div>
+                    <div className="text-zinc-400 text-lg">Stranger has left</div>
+                  </div>
+                )}
+                {status === "connected" && (
+                  <div className="w-full h-full flex flex-col min-h-0">
+                    <div className="flex-1 min-h-0">
+                      <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} />
+                    </div>
+                  </div>
+                )}
 
-            {gameType && (
-              <GameOverlay
-                key={gameKey}
-                gameType={gameType}
-                isHost={isGameHost}
-                gameState={gameState}
-                onLocalState={handleGameLocalState}
-                onGameEnd={handleGameEnd}
-                onGameOver={handleGameOver}
-              />
-            )}
-          </div>
+                {gameType && (
+                  <GameOverlay
+                    key={gameKey}
+                    gameType={gameType}
+                    isHost={isGameHost}
+                    gameState={gameState}
+                    onLocalState={handleGameLocalState}
+                    onGameEnd={handleGameEnd}
+                    onGameOver={handleGameOver}
+                  />
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-center gap-3 p-3 bg-zinc-900/50">
             {status === "idle" || status === "disconnected" ? (
@@ -626,19 +690,21 @@ export default function VideoChat() {
                     {!gameOver && (
                       <GameMenu onSelectGame={handleSendGameInvite} />
                     )}
-                    <button
-                      onClick={() => setShowChat(!showChat)}
-                      className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 relative ${
-                        showChat ? "bg-blue-600 text-white" : "bg-zinc-700 hover:bg-zinc-600 text-white"
-                      }`}
-                    >
-                      💬 Chat
-                      {!showChat && unreadCount > 0 && (
-                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                          {unreadCount}
-                        </span>
-                      )}
-                    </button>
+                    {mode === "video" && (
+                      <button
+                        onClick={() => setShowChat(!showChat)}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 relative ${
+                          showChat ? "bg-blue-600 text-white" : "bg-zinc-700 hover:bg-zinc-600 text-white"
+                        }`}
+                      >
+                        💬 Chat
+                        {!showChat && unreadCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </button>
+                    )}
                   </>
                 )}
               </>
@@ -646,7 +712,7 @@ export default function VideoChat() {
           </div>
         </div>
 
-        {showChat && (
+        {showChat && mode === "video" && (
           <div className="w-full lg:w-80 h-64 lg:h-auto border-t lg:border-t-0 lg:border-l border-zinc-700 bg-zinc-900 flex flex-col">
             <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-700">
               <span className="text-white font-medium text-sm">Chat</span>
