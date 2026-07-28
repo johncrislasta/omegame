@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSocket } from "@/hooks/useSocket";
 import { useWebRTC } from "@/hooks/useWebRTC";
+import { useCountry } from "@/hooks/useCountry";
 import GameMenu from "./GameMenu";
 import GameOverlay from "./GameOverlay";
 import ChatBox from "./ChatBox";
@@ -19,6 +20,7 @@ interface VideoChatProps {
 export default function VideoChat({ mode = "video" }: VideoChatProps) {
   const { emit, on, isConnected } = useSocket();
   const webrtc = useWebRTC(emit);
+  const myCountry = useCountry();
 
   const [status, setStatus] = useState<Status>("idle");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -37,6 +39,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
   const [pipEnlarged, setPipEnlarged] = useState(false);
   const [pipPinned, setPipPinned] = useState(false);
   const [containerLandscape, setContainerLandscape] = useState(true);
+  const [partnerCountry, setPartnerCountry] = useState<string | null>(null);
 
   const dragRef = useRef<{ startX: number; startY: number; startLeft: number; startTop: number; moved: boolean } | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
@@ -81,6 +84,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
     setPendingPlayAgain(false);
     setPartnerPendingPlayAgain(false);
     pendingPlayAgainRef.current = false;
+    setPartnerCountry(null);
   }, []);
 
   const handleVideoDragStart = useCallback((e: React.PointerEvent) => {
@@ -148,15 +152,15 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
     stopSearchRef.current = true;
     emit("skip");
     setStatus("waiting");
-    emit("find-stranger", { mode });
-  }, [webrtc, resetState, emit, mode]);
+    emit("find-stranger", { mode, country: myCountry ?? undefined });
+  }, [webrtc, resetState, emit, mode, myCountry]);
 
   const handleFindStranger = useCallback(() => {
     stopSearchRef.current = false;
     resetState();
     setStatus("waiting");
-    emit("find-stranger", { mode });
-  }, [resetState, emit, mode]);
+    emit("find-stranger", { mode, country: myCountry ?? undefined });
+  }, [resetState, emit, mode, myCountry]);
 
   const handleStopSearch = useCallback(() => {
     stopSearchRef.current = true;
@@ -273,8 +277,9 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
 
     cleanups.push(
       on("matched", async (data: unknown) => {
-        const { partnerId: pid, isInitiator } = data as { partnerId: string; roomId: string; isInitiator: boolean };
+        const { partnerId: pid, isInitiator, partnerCountry: pc } = data as { partnerId: string; roomId: string; isInitiator: boolean; partnerCountry?: string };
         partnerIdRef.current = pid;
+        if (pc) setPartnerCountry(pc);
         setStatus("connecting");
 
         if (mode === "text") {
@@ -430,7 +435,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
         if (mode === "video") webrtc.cleanup();
         resetState();
         setTimeout(() => {
-          emit("find-stranger", { mode });
+          emit("find-stranger", { mode, country: myCountry ?? undefined });
           setStatus("waiting");
         }, 300);
       })
@@ -449,7 +454,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
     return () => {
       cleanups.forEach((fn) => fn());
     };
-  }, [on, webrtc, emit, resetState, mode]);
+  }, [on, webrtc, emit, resetState, mode, myCountry]);
 
   useEffect(() => {
     if (mode === "text") return;
@@ -495,6 +500,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
                   : "inset-0"
               }`}>
                 {webrtc.remoteStream ? (
+                  <>
                   <video
                     ref={(el) => {
                       if (el) el.srcObject = webrtc.remoteStream;
@@ -503,6 +509,12 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
                     playsInline
                     className="w-full h-full object-cover"
                   />
+                  {partnerCountry && (
+                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1 text-xl z-10" title={partnerCountry}>
+                      {String.fromCodePoint(...[...partnerCountry.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)))}
+                    </div>
+                  )}
+                  </>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     {status === "waiting" && (
@@ -605,32 +617,37 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
             </div>
           ) : (
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-0">
-                {status === "waiting" && (
-                  <div className="text-center">
-                    <div className="text-4xl mb-4 animate-spin">🔍</div>
-                    <div className="text-zinc-400 text-lg">Looking for someone...</div>
-                    <div className="text-zinc-600 text-sm mt-2">This may take a moment</div>
-                  </div>
-                )}
-                {status === "connecting" && (
-                  <div className="text-center">
-                    <div className="text-4xl mb-4 animate-pulse">⚡</div>
-                    <div className="text-zinc-400 text-lg">Connecting...</div>
-                  </div>
-                )}
-                {status === "idle" && (
-                  <div className="text-center">
-                    <div className="text-6xl mb-4">💬</div>
-                    <div className="text-zinc-400 text-lg">Ready to chat with someone?</div>
-                  </div>
-                )}
-                {status === "disconnected" && (
-                  <div className="text-center">
-                    <div className="text-4xl mb-4">👋</div>
-                    <div className="text-zinc-400 text-lg">Stranger has left</div>
-                  </div>
-                )}
+              <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-0 relative">
+            {status === "waiting" && (
+              <div className="text-center">
+                <div className="text-4xl mb-4 animate-spin">🔍</div>
+                <div className="text-zinc-400 text-lg">Looking for someone...</div>
+                <div className="text-zinc-600 text-sm mt-2">This may take a moment</div>
+              </div>
+            )}
+            {status === "connecting" && (
+              <div className="text-center">
+                <div className="text-4xl mb-4 animate-pulse">⚡</div>
+                <div className="text-zinc-400 text-lg">Connecting...</div>
+              </div>
+            )}
+            {status === "idle" && (
+              <div className="text-center">
+                <div className="text-6xl mb-4">💬</div>
+                <div className="text-zinc-400 text-lg">Ready to chat with someone?</div>
+              </div>
+            )}
+            {status === "disconnected" && (
+              <div className="text-center">
+                <div className="text-4xl mb-4">👋</div>
+                <div className="text-zinc-400 text-lg">Stranger has left</div>
+              </div>
+            )}
+            {status === "connected" && partnerCountry && (
+              <div className="absolute top-3 left-3 bg-zinc-800 rounded-full px-2 py-1 text-xl z-10" title={partnerCountry}>
+                {String.fromCodePoint(...[...partnerCountry.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)))}
+              </div>
+            )}
                 {status === "connected" && (
                   <div className="w-full h-full flex flex-col min-h-0">
                     <div className="flex-1 min-h-0">

@@ -39,13 +39,15 @@ interface WaitingUser {
   socketId: string;
   joinedAt: number;
   mode: "video" | "text";
+  country?: string;
 }
 
 const waitingQueues: { video: WaitingUser[]; text: WaitingUser[] } = { video: [], text: [] };
 const activeRooms = new Map<string, { user1: string; user2: string }>();
 const userToRoom = new Map<string, string>();
+const userCountry = new Map<string, string>();
 
-function findPartner(socketId: string, mode: "video" | "text") {
+function findPartner(socketId: string, mode: "video" | "text", country?: string) {
   const now = Date.now();
   const queue = waitingQueues[mode];
 
@@ -61,12 +63,18 @@ function findPartner(socketId: string, mode: "video" | "text") {
     userToRoom.set(partner.socketId, roomId);
     userToRoom.set(socketId, roomId);
 
-    return { user1: partner.socketId, user2: socketId, roomId };
+    return {
+      user1: partner.socketId,
+      user2: socketId,
+      roomId,
+      country1: partner.country,
+      country2: country,
+    };
   }
 
   const alreadyWaiting = queue.some((w) => w.socketId === socketId);
   if (!alreadyWaiting) {
-    queue.push({ socketId, joinedAt: now, mode });
+    queue.push({ socketId, joinedAt: now, mode, country });
   }
 
   return null;
@@ -77,14 +85,16 @@ io.on("connection", (socket) => {
   broadcastOnlineCount();
   console.log(`[Server] User connected: ${socket.id}`);
 
-  socket.on("find-stranger", (data?: { mode?: string }) => {
+  socket.on("find-stranger", (data?: { mode?: string; country?: string }) => {
     const mode = data?.mode === "text" ? "text" : "video";
+    const country = typeof data?.country === "string" ? data.country : undefined;
+    if (country) userCountry.set(socket.id, country);
     console.log(`[Server] ${socket.id} looking for stranger (${mode})`);
-    const result = findPartner(socket.id, mode);
+    const result = findPartner(socket.id, mode, country);
 
     if (result) {
-      io.to(result.user1).emit("matched", { partnerId: result.user2, roomId: result.roomId, isInitiator: true });
-      io.to(result.user2).emit("matched", { partnerId: result.user1, roomId: result.roomId, isInitiator: false });
+      io.to(result.user1).emit("matched", { partnerId: result.user2, roomId: result.roomId, isInitiator: true, partnerCountry: result.country2 });
+      io.to(result.user2).emit("matched", { partnerId: result.user1, roomId: result.roomId, isInitiator: false, partnerCountry: result.country1 });
       console.log(`[Server] Paired: ${result.user1} <-> ${result.user2}`);
     } else {
       socket.emit("waiting");
@@ -167,6 +177,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     onlineCount = Math.max(0, onlineCount - 1);
     broadcastOnlineCount();
+    userCountry.delete(socket.id);
     console.log(`[Server] User disconnected: ${socket.id}`);
 
     for (const q of [waitingQueues.video, waitingQueues.text]) {
