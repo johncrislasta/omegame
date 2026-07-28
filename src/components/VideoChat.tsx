@@ -8,6 +8,7 @@ import GameMenu from "./GameMenu";
 import GameOverlay from "./GameOverlay";
 import ChatBox from "./ChatBox";
 import type { ChatMessage, GameType } from "@/lib/types";
+import { countryToFlag } from "@/lib/countryFlag";
 import { v4 as uuid } from "uuid";
 
 type Status = "idle" | "waiting" | "matched" | "connecting" | "connected" | "disconnected";
@@ -152,15 +153,15 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
     stopSearchRef.current = true;
     emit("skip");
     setStatus("waiting");
-    emit("find-stranger", { mode, country: myCountry ?? undefined });
-  }, [webrtc, resetState, emit, mode, myCountry]);
+    emit("find-stranger", { mode });
+  }, [webrtc, resetState, emit, mode]);
 
   const handleFindStranger = useCallback(() => {
     stopSearchRef.current = false;
     resetState();
     setStatus("waiting");
-    emit("find-stranger", { mode, country: myCountry ?? undefined });
-  }, [resetState, emit, mode, myCountry]);
+    emit("find-stranger", { mode });
+  }, [resetState, emit, mode]);
 
   const handleStopSearch = useCallback(() => {
     stopSearchRef.current = true;
@@ -435,7 +436,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
         if (mode === "video") webrtc.cleanup();
         resetState();
         setTimeout(() => {
-          emit("find-stranger", { mode, country: myCountry ?? undefined });
+          emit("find-stranger", { mode });
           setStatus("waiting");
         }, 300);
       })
@@ -454,7 +455,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
     return () => {
       cleanups.forEach((fn) => fn());
     };
-  }, [on, webrtc, emit, resetState, mode, myCountry]);
+  }, [on, webrtc, emit, resetState, mode]);
 
   useEffect(() => {
     if (mode === "text") return;
@@ -470,6 +471,10 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
       });
     }
   }, [webrtc, mode]);
+
+  useEffect(() => {
+    if (myCountry) emit("set-country", myCountry);
+  }, [myCountry, emit]);
 
   return (
     <div className="flex-1 flex flex-col bg-zinc-950 min-h-0">
@@ -511,7 +516,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
                   />
                   {partnerCountry && (
                     <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1 text-xl z-10" title={partnerCountry}>
-                      {String.fromCodePoint(...[...partnerCountry.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)))}
+                      {countryToFlag(partnerCountry)}
                     </div>
                   )}
                   </>
@@ -645,7 +650,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
             )}
             {status === "connected" && partnerCountry && (
               <div className="absolute top-3 left-3 bg-zinc-800 rounded-full px-2 py-1 text-xl z-10" title={partnerCountry}>
-                {String.fromCodePoint(...[...partnerCountry.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)))}
+                {countryToFlag(partnerCountry)}
               </div>
             )}
                 {status === "connected" && (
