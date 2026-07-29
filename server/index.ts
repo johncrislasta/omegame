@@ -35,11 +35,16 @@ const userModes = new Map<string, "video" | "text">();
 function broadcastOnlineCount() {
   let video = 0;
   let text = 0;
-  for (const mode of userModes.values()) {
+  const countries: Record<string, number> = {};
+  for (const [sid, mode] of userModes) {
     if (mode === "video") video++;
     else if (mode === "text") text++;
+    const country = userCountry.get(sid);
+    if (country) {
+      countries[country] = (countries[country] || 0) + 1;
+    }
   }
-  io.emit("online-count", { total: totalConnected, video, text });
+  io.emit("online-count", { total: totalConnected, video, text, countries });
 }
 
 function findPartner(socketId: string, mode: "video" | "text", country?: string) {
