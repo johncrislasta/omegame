@@ -15,6 +15,7 @@ export interface ChatMessage {
   text: string;
   sender: "me" | "stranger";
   timestamp: number;
+  kind?: "text" | "feedback";
 }
 
 export interface MatchEvent {

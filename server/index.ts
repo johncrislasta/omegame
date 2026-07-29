@@ -28,6 +28,8 @@ const waitingQueues: { video: WaitingUser[]; text: WaitingUser[] } = { video: []
 const activeRooms = new Map<string, { user1: string; user2: string }>();
 const userToRoom = new Map<string, string>();
 const userCountry = new Map<string, string>();
+const userFeedbackReceived = new Map<string, { type: string; category: string; isPositive: boolean; timestamp: number }[]>();
+const userFeedbackGiven = new Map<string, { type: string; category: string; isPositive: boolean; timestamp: number }[]>();
 
 let totalConnected = 0;
 const userModes = new Map<string, "video" | "text">();
@@ -126,6 +128,17 @@ io.on("connection", (socket) => {
     io.to(to).emit("chat-message", { from: socket.id, message });
   });
 
+  socket.on("feedback-send", ({ to, type, category, isPositive }: { to: string; type: string; category: string; isPositive: boolean }) => {
+    const entry = { type, category, isPositive, timestamp: Date.now() };
+    const received = userFeedbackReceived.get(to) || [];
+    received.push(entry);
+    userFeedbackReceived.set(to, received);
+    const given = userFeedbackGiven.get(socket.id) || [];
+    given.push(entry);
+    userFeedbackGiven.set(socket.id, given);
+    io.to(to).emit("feedback-received", { from: socket.id, type, category, isPositive });
+  });
+
   socket.on("game-invite", ({ to, gameType }: { to: string; gameType: string }) => {
     console.log(`[Server] Game invite: ${socket.id} -> ${to} (${gameType})`);
     io.to(to).emit("game-invite", { from: socket.id, gameType });
@@ -185,6 +198,8 @@ io.on("connection", (socket) => {
     userModes.delete(socket.id);
     broadcastOnlineCount();
     userCountry.delete(socket.id);
+    userFeedbackReceived.delete(socket.id);
+    userFeedbackGiven.delete(socket.id);
     console.log(`[Server] User disconnected: ${socket.id}`);
 
     for (const q of [waitingQueues.video, waitingQueues.text]) {
