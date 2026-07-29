@@ -704,7 +704,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
                     {gameOver && gameType && !pendingPlayAgain && !partnerPendingPlayAgain && (
                       <button
                         onClick={handlePlayAgain}
-                        className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full font-medium transition-colors flex items-center gap-2"
+                        className="px-5 py-2 bg-mint hover:bg-[#8fd696] text-zinc-900 rounded-full font-medium transition-colors flex items-center gap-2"
                       >
                         🔄 Play Again
                       </button>

@@ -19,8 +19,9 @@ function ChatContent() {
   return (
     <div className="h-screen flex flex-col">
       <header className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-800">
-        <Link href="/" className="text-xl font-bold text-white">
-          Ome<span className="text-purple-500">Game</span>
+        <Link href="/" className="flex items-center gap-2 text-xl font-bold text-white">
+          <img src="/logo.png" alt="OmeGame" className="w-6 h-6" />
+          <span>Ome<span className="text-mint">Game</span></span>
         </Link>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 text-zinc-400 text-sm">
@@ -31,7 +32,7 @@ function ChatContent() {
             <select
               value={mode}
               onChange={(e) => switchMode(e.target.value)}
-              className="appearance-none bg-zinc-800 text-white text-sm px-3 py-1.5 pr-8 rounded-lg border border-zinc-700 hover:border-zinc-500 focus:border-purple-500 focus:outline-none cursor-pointer transition-colors"
+              className="appearance-none bg-zinc-800 text-white text-sm px-3 py-1.5 pr-8 rounded-lg border border-zinc-700 hover:border-zinc-500 focus:border-mint focus:outline-none cursor-pointer transition-colors"
             >
               <option value="video">🎥 Video Chat</option>
               <option value="text">💬 Text Chat</option>
