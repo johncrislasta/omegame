@@ -228,12 +228,6 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
     setGameOver(true);
   }, []);
 
-  const handlePlayAgain = useCallback(() => {
-    if (!partnerIdRef.current) return;
-    setPendingPlayAgain(true);
-    pendingPlayAgainRef.current = true;
-    emit("game-play-again", { to: partnerIdRef.current });
-  }, [emit]);
 
   const handleAcceptPlayAgain = useCallback(() => {
     if (!partnerIdRef.current || !gameType) return;
@@ -704,17 +698,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
                 </button>
                 {status === "connected" && (
                   <>
-                    {gameOver && gameType && !pendingPlayAgain && !partnerPendingPlayAgain && (
-                      <button
-                        onClick={handlePlayAgain}
-                        className="px-5 py-2 bg-mint hover:bg-[#8fd696] text-zinc-900 rounded-full font-medium transition-colors flex items-center gap-2"
-                      >
-                        🔄 Play Again
-                      </button>
-                    )}
-                    {!gameOver && (
-                      <GameMenu onSelectGame={handleSendGameInvite} />
-                    )}
+                    <GameMenu onSelectGame={handleSendGameInvite} />
                     {mode === "video" && (
                       <button
                         onClick={() => setShowChat(!showChat)}
