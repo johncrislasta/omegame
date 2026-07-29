@@ -8,10 +8,12 @@ const SOCKET_URL =
     ? process.env.NEXT_PUBLIC_SIGNALING_URL || window.location.origin
     : "http://localhost:3000";
 
+type OnlineCount = { total: number; video: number; text: number };
+
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [onlineCount, setOnlineCount] = useState(0);
+  const [onlineCount, setOnlineCount] = useState<OnlineCount>({ total: 0, video: 0, text: 0 });
 
   useEffect(() => {
     const socket = io(SOCKET_URL, {
@@ -21,7 +23,7 @@ export function useSocket() {
 
     socket.on("connect", () => setIsConnected(true));
     socket.on("disconnect", () => setIsConnected(false));
-    socket.on("online-count", (count: number) => setOnlineCount(count));
+    socket.on("online-count", (count: OnlineCount) => setOnlineCount(count));
 
     return () => {
       socket.disconnect();

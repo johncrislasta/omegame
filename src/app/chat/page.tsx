@@ -25,7 +25,7 @@ function ChatContent() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 text-zinc-400 text-sm">
             <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            {onlineCount} online
+            {mode === "video" ? onlineCount.video : onlineCount.text} online
           </div>
           <div className="relative">
             <select
