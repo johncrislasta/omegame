@@ -67,6 +67,8 @@ export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTa
     return winner === myMark ? "win" : "lose";
   }, [roundOver, winner, myMark, draw]);
 
+
+
   const mergedXCount = effectiveBoard.filter((c) => c === "X").length;
   const mergedOCount = effectiveBoard.filter((c) => c === "O").length;
   const isMyTurn = !roundOver && (
@@ -94,8 +96,14 @@ export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTa
   }, [round, onStateChange]);
 
   return (
+    <>
     <div className="flex flex-col items-center gap-3">
-      <div className="text-white text-lg font-bold drop-shadow-lg">
+      <div className="text-white text-lg font-bold drop-shadow-lg flex items-center gap-2">
+        {roundOver && roundResult !== null && roundResult !== "draw" && (
+          <span className={roundResult === "win" ? "animate-win-emoji" : "animate-lose-emoji"}>
+            {roundResult === "win" ? "🥳" : "😭"}
+          </span>
+        )}
         {roundOver
           ? roundResult === "win"
             ? "You Win!"
@@ -137,5 +145,6 @@ export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTa
         </div>
       )}
     </div>
+    </>
   );
 }

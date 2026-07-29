@@ -119,6 +119,7 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
   useEffect(() => {
     if (myPlayAgain && oppPlayAgainRequest) {
       if (matchOver) {
+        gameOverCalledRef.current = false;
         setRounds([]);
       }
       resetRound();
@@ -140,6 +141,7 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
   }, [onStateChange]);
 
   return (
+    <>
     <div className="flex flex-col items-center gap-3">
       <div className="text-white text-lg font-bold drop-shadow-lg">
         Round {showResult ? currentRound : currentRound + 1} — You: {myScore} | Them: {oppScore}
@@ -225,7 +227,10 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
           )}
           {matchOver && (
             <>
-              <div className="text-xl font-bold text-white">
+              <div className="text-xl font-bold text-white flex items-center gap-2">
+                <span className={myScore >= 3 ? "animate-win-emoji" : "animate-lose-emoji"}>
+                  {myScore >= 3 ? "🥳" : "😭"}
+                </span>
                 {myScore >= 3 ? "You won the match!" : "You lost the match!"}
               </div>
               {!myPlayAgain && !oppPlayAgainRequest && (
@@ -252,5 +257,6 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
         </div>
       )}
     </div>
+    </>
   );
 }
