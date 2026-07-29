@@ -55,7 +55,7 @@ export default function Home() {
             <div className="flex flex-col items-start">
               <span>Video Chat</span>
               {onlineCount.video > 0 && (
-                <span className="text-[#8fd696] text-xs font-normal leading-tight">{onlineCount.video} online</span>
+                <span className="text-green-800 text-xs font-normal leading-tight">{onlineCount.video} online</span>
               )}
             </div>
           </Link>
