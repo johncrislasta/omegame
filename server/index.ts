@@ -29,10 +29,17 @@ const activeRooms = new Map<string, { user1: string; user2: string }>();
 const userToRoom = new Map<string, string>();
 const userCountry = new Map<string, string>();
 
-let onlineCount = 0;
+let totalConnected = 0;
+const userModes = new Map<string, "video" | "text">();
 
 function broadcastOnlineCount() {
-  io.emit("online-count", onlineCount);
+  let video = 0;
+  let text = 0;
+  for (const mode of userModes.values()) {
+    if (mode === "video") video++;
+    else if (mode === "text") text++;
+  }
+  io.emit("online-count", { total: totalConnected, video, text });
 }
 
 function findPartner(socketId: string, mode: "video" | "text", country?: string) {
@@ -69,7 +76,7 @@ function findPartner(socketId: string, mode: "video" | "text", country?: string)
 }
 
 io.on("connection", (socket) => {
-  onlineCount++;
+  totalConnected++;
   broadcastOnlineCount();
   console.log(`[Server] User connected: ${socket.id}`);
 
@@ -81,6 +88,8 @@ io.on("connection", (socket) => {
 
   socket.on("find-stranger", (data?: { mode?: string; country?: string }) => {
     const mode = data?.mode === "text" ? "text" : "video";
+    userModes.set(socket.id, mode);
+    broadcastOnlineCount();
     console.log(`[Server] ${socket.id} looking for stranger (${mode})`);
     const result = findPartner(socket.id, mode, userCountry.get(socket.id));
 
@@ -167,7 +176,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    onlineCount = Math.max(0, onlineCount - 1);
+    totalConnected = Math.max(0, totalConnected - 1);
+    userModes.delete(socket.id);
     broadcastOnlineCount();
     userCountry.delete(socket.id);
     console.log(`[Server] User disconnected: ${socket.id}`);

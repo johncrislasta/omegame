@@ -1,23 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { io } from "socket.io-client";
-
-const SOCKET_URL =
-  typeof window !== "undefined"
-    ? process.env.NEXT_PUBLIC_SIGNALING_URL || window.location.origin
-    : "http://localhost:3000";
+import { useState } from "react";
+import { useSocket } from "@/hooks/useSocket";
 
 export default function Home() {
   const [mounted] = useState(true);
-  const [onlineCount, setOnlineCount] = useState(0);
-
-  useEffect(() => {
-    const socket = io(SOCKET_URL, { transports: ["websocket", "polling"] });
-    socket.on("online-count", (count: number) => setOnlineCount(count));
-    return () => { socket.disconnect(); };
-  }, []);
+  const { onlineCount, isConnected } = useSocket();
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6">
@@ -33,10 +22,10 @@ export default function Home() {
           Meet strangers. Play games. Have fun.
         </p>
 
-        {onlineCount > 0 && (
+        {isConnected && onlineCount.total > 0 && (
           <div className="flex items-center justify-center gap-1.5 text-zinc-500 text-sm mb-10">
             <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            {onlineCount} {onlineCount === 1 ? "person" : "people"} online
+            {onlineCount.total} {onlineCount.total === 1 ? "person" : "people"} online
           </div>
         )}
 
@@ -46,14 +35,24 @@ export default function Home() {
             className="inline-flex items-center gap-3 px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white text-lg font-semibold rounded-full transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25"
           >
             <span className="text-2xl">🎥</span>
-            Video Chat
+            <div className="flex flex-col items-start">
+              <span>Video Chat</span>
+              {onlineCount.video > 0 && (
+                <span className="text-purple-300 text-xs font-normal leading-tight">{onlineCount.video} online</span>
+              )}
+            </div>
           </Link>
           <Link
             href="/chat?mode=text"
             className="inline-flex items-center gap-3 px-8 py-4 bg-zinc-800 hover:bg-zinc-700 text-white text-lg font-semibold rounded-full border border-zinc-600 hover:border-zinc-500 transition-all hover:scale-105"
           >
             <span className="text-2xl">💬</span>
-            Text Chat
+            <div className="flex flex-col items-start">
+              <span>Text Chat</span>
+              {onlineCount.text > 0 && (
+                <span className="text-zinc-400 text-xs font-normal leading-tight">{onlineCount.text} online</span>
+              )}
+            </div>
           </Link>
         </div>
 
