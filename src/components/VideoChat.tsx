@@ -8,7 +8,7 @@ import GameMenu from "./GameMenu";
 import GameOverlay from "./GameOverlay";
 import ChatBox from "./ChatBox";
 import type { ChatMessage, GameType } from "@/lib/types";
-import { countryFlagUrl } from "@/lib/countryFlag";
+import { countryFlagUrl, countryToFlag } from "@/lib/countryFlag";
 import { v4 as uuid } from "uuid";
 
 type Status = "idle" | "waiting" | "matched" | "connecting" | "connected" | "disconnected";
@@ -41,6 +41,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
   const [pipPinned, setPipPinned] = useState(false);
   const [containerLandscape, setContainerLandscape] = useState(true);
   const [partnerCountry, setPartnerCountry] = useState<string | null>(null);
+  const [incomingFeedback, setIncomingFeedback] = useState<{ type: string; isPositive: boolean } | null>(null);
 
   const dragRef = useRef<{ startX: number; startY: number; startLeft: number; startTop: number; moved: boolean } | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
@@ -262,6 +263,18 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
     [emit]
   );
 
+  const handleFeedback = useCallback(
+    (type: string, category: string, isPositive: boolean) => {
+      if (!partnerIdRef.current) return;
+      emit("feedback-send", { to: partnerIdRef.current, type, category, isPositive });
+      setChatMessages((prev) => [
+        ...prev,
+        { id: uuid(), text: `You sent ${type}`, sender: "me", timestamp: Date.now(), kind: "feedback" },
+      ]);
+    },
+    [emit]
+  );
+
   useEffect(() => {
     const cleanups: (() => void)[] = [];
 
@@ -280,6 +293,13 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
 
         if (mode === "text") {
           setStatus("connected");
+          if (pc) {
+            const flag = countryToFlag(pc);
+            setChatMessages((prev) => [
+              ...prev,
+              { id: uuid(), text: `Stranger is from ${flag} ${pc.toUpperCase()}`, sender: "stranger", timestamp: Date.now(), kind: "feedback" },
+            ]);
+          }
           return;
         }
 
@@ -342,6 +362,18 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
           { id: uuid(), text: message, sender: "stranger", timestamp: Date.now() },
         ]);
         setUnreadCount((prev) => prev + 1);
+      })
+    );
+
+    cleanups.push(
+      on("feedback-received", (data: unknown) => {
+        const { type, isPositive } = data as { type: string; isPositive: boolean };
+        setIncomingFeedback({ type, isPositive });
+        setChatMessages((prev) => [
+          ...prev,
+          { id: uuid(), text: `Stranger sent ${type}`, sender: "stranger", timestamp: Date.now(), kind: "feedback" },
+        ]);
+        setTimeout(() => setIncomingFeedback(null), 1000);
       })
     );
 
@@ -619,7 +651,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
             </div>
           ) : (
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-0 relative">
+              <div className="flex-1 flex flex-col items-center justify-center p-0 sm:p-8 min-h-0 relative">
             {status === "waiting" && (
               <div className="text-center">
                 <div className="text-4xl mb-4 animate-spin">🔍</div>
@@ -645,15 +677,10 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
                 <div className="text-zinc-400 text-lg">Stranger has left</div>
               </div>
             )}
-            {status === "connected" && partnerCountry && countryFlagUrl(partnerCountry) && (
-              <div className="absolute top-3 left-3 bg-zinc-800 rounded-full px-1.5 py-1 z-10" title={partnerCountry}>
-                <img src={countryFlagUrl(partnerCountry)} alt={partnerCountry} className="w-6 h-[15px] rounded-sm" />
-              </div>
-            )}
-                {status === "connected" && (
+            {status === "connected" && (
                   <div className="w-full h-full flex flex-col min-h-0">
                     <div className="flex-1 min-h-0">
-                      <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} />
+                      <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} onFeedback={handleFeedback} incomingFeedback={incomingFeedback} />
                     </div>
                   </div>
                 )}
@@ -730,7 +757,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
               </button>
             </div>
             <div className="flex-1 min-h-0">
-              <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} />
+              <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} onFeedback={handleFeedback} incomingFeedback={incomingFeedback} />
             </div>
           </div>
         )}
