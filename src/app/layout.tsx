@@ -15,6 +15,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "OmeGame - Meet Strangers, Play Games",
   description: "Omegle-style video chat with social games. Meet strangers and play Tic Tac Toe, Rock Paper Scissors, and more.",
+  manifest: "/favicon/site.webmanifest",
+  other: {
+    "apple-mobile-web-app-title": "OmeGame",
+  },
 };
 
 export default function RootLayout({

@@ -16,7 +16,7 @@ export default function Home() {
         }`}
       >
         <h1 className="text-6xl sm:text-8xl font-bold text-white mb-2 tracking-tight">
-          Ome<span className="text-purple-500">Game</span>
+          Ome<span className="text-mint">Game</span>
         </h1>
         <p className="text-zinc-400 text-lg sm:text-xl mb-4 max-w-md mx-auto">
           Meet strangers. Play games. Have fun.
@@ -32,13 +32,13 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
           <Link
             href="/chat?mode=video"
-            className="inline-flex items-center gap-3 px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white text-lg font-semibold rounded-full transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-mint hover:bg-[#8fd696] text-zinc-900 text-lg font-semibold rounded-full transition-all hover:scale-105 hover:shadow-lg hover:shadow-mint/25"
           >
             <span className="text-2xl">🎥</span>
             <div className="flex flex-col items-start">
               <span>Video Chat</span>
               {onlineCount.video > 0 && (
-                <span className="text-purple-300 text-xs font-normal leading-tight">{onlineCount.video} online</span>
+                <span className="text-[#8fd696] text-xs font-normal leading-tight">{onlineCount.video} online</span>
               )}
             </div>
           </Link>

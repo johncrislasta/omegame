@@ -28,7 +28,7 @@ export default function GameMenu({ onSelectGame }: GameMenuProps) {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+        className="px-4 py-2 bg-mint hover:bg-[#8fd696] text-zinc-900 rounded-lg font-medium transition-colors flex items-center gap-2"
       >
         <span>🎮</span> Play Game
       </button>
