@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useSocket } from "@/hooks/useSocket";
+import { countryFlagUrl } from "@/lib/countryFlag";
 
 export default function Home() {
   const [mounted] = useState(true);
@@ -23,9 +24,25 @@ export default function Home() {
         </p>
 
         {isConnected && onlineCount.total > 0 && (
-          <div className="flex items-center justify-center gap-1.5 text-zinc-500 text-sm mb-10">
-            <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            {onlineCount.total} {onlineCount.total === 1 ? "person" : "people"} online
+          <div className="flex flex-col items-center gap-2 mb-10">
+            <div className="flex items-center gap-1.5 text-zinc-500 text-sm">
+              <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              {onlineCount.total} {onlineCount.total === 1 ? "person" : "people"} online
+            </div>
+            {Object.keys(onlineCount.countries).length > 0 && (
+              <div className="flex items-center gap-3">
+                {Object.entries(onlineCount.countries).map(([code, count]) => (
+                  <div key={code} className="flex flex-col items-center gap-0.5">
+                    <img
+                      src={countryFlagUrl(code)}
+                      alt={code}
+                      className="w-6 h-[15px] rounded-sm"
+                    />
+                    <span className="text-[10px] text-zinc-500">{code} {count > 1 && count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
