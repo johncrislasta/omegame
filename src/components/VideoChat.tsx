@@ -221,6 +221,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
     setPendingPlayAgain(false);
     setPartnerPendingPlayAgain(false);
     pendingPlayAgainRef.current = false;
+    setIsGameHost(false);
   }, [emit]);
 
   const handleGameOver = useCallback(() => {
@@ -356,6 +357,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
         const invite = { from, gameType: gt };
         setPendingInvite(invite);
         pendingInviteRef.current = invite;
+        setIsGameHost(false);
       })
     );
 
@@ -393,6 +395,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
         setPendingPlayAgain(false);
         setPartnerPendingPlayAgain(false);
         pendingPlayAgainRef.current = false;
+        setIsGameHost(false);
       })
     );
 
