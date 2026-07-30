@@ -1,5 +1,7 @@
 import { Server } from "socket.io";
 import { createServer } from "http";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
 const port = parseInt(process.env.PORT || "3001", 10);
 const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
@@ -17,20 +19,6 @@ httpServer.listen(port, () => {
   console.log(`[Server] Signaling server running on http port ${port}`);
 });
 
-interface WaitingUser {
-  socketId: string;
-  joinedAt: number;
-  mode: "video" | "text";
-  country?: string;
-}
-
-const waitingQueues: { video: WaitingUser[]; text: WaitingUser[] } = { video: [], text: [] };
-const activeRooms = new Map<string, { user1: string; user2: string }>();
-const userToRoom = new Map<string, string>();
-const userCountry = new Map<string, string>();
-const userFeedbackReceived = new Map<string, { type: string; category: string; isPositive: boolean; timestamp: number }[]>();
-const userFeedbackGiven = new Map<string, { type: string; category: string; isPositive: boolean; timestamp: number }[]>();
-
 let totalConnected = 0;
 const userModes = new Map<string, "video" | "text">();
 
@@ -46,37 +34,133 @@ function broadcastOnlineCount() {
       countries[country] = (countries[country] || 0) + 1;
     }
   }
-  io.emit("online-count", { total: totalConnected, video, text, countries });
+  io.emit("online-count", { total: totalConnected, video, text, countries, topInterests: getTopInterests(10) });
 }
 
-function findPartner(socketId: string, mode: "video" | "text", country?: string) {
+interface WaitingUser {
+  socketId: string;
+  joinedAt: number;
+  mode: "video" | "text";
+  country?: string;
+  interests?: string[];
+}
+
+const waitingQueues: { video: WaitingUser[]; text: WaitingUser[] } = { video: [], text: [] };
+const activeRooms = new Map<string, { user1: string; user2: string }>();
+const userToRoom = new Map<string, string>();
+const userCountry = new Map<string, string>();
+const userFeedbackReceived = new Map<string, { type: string; category: string; isPositive: boolean; timestamp: number }[]>();
+const userFeedbackGiven = new Map<string, { type: string; category: string; isPositive: boolean; timestamp: number }[]>();
+const userInterests = new Map<string, string[]>();
+const interestCounts = new Map<string, number>();
+
+function updateInterestCounts(socketId: string, newInterests: string[]) {
+  const old = userInterests.get(socketId);
+  if (old) {
+    for (const i of old) {
+      const c = interestCounts.get(i);
+      if (c) interestCounts.set(i, c - 1);
+    }
+  }
+  for (const i of newInterests) {
+    interestCounts.set(i, (interestCounts.get(i) || 0) + 1);
+  }
+  userInterests.set(socketId, newInterests);
+}
+
+function getTopInterests(n: number): { interest: string; count: number }[] {
+  return [...interestCounts.entries()]
+    .filter(([, c]) => c > 0)
+    .filter(([interest]) => !isProhibited(interest))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([interest, count]) => ({ interest, count }));
+}
+
+const prohibitedRaw: string[] = JSON.parse(readFileSync(resolve(import.meta.dirname ?? __dirname, "../src/data/prohibited-interests.json"), "utf-8"));
+const prohibitedSet = new Set(prohibitedRaw.map((s: string) => s.toLowerCase().trim()));
+
+function normalizeInterest(s: string): string {
+  return s.toLowerCase().trim();
+}
+
+function isProhibited(interest: string): boolean {
+  return prohibitedSet.has(normalizeInterest(interest));
+}
+
+function hasProhibited(interests: string[]): boolean {
+  return interests.some(isProhibited);
+}
+
+function allSafe(interests: string[]): boolean {
+  return interests.length > 0 && interests.every((i) => !isProhibited(i));
+}
+
+function findPartner(socketId: string, mode: "video" | "text", country?: string, interests?: string[]) {
   const now = Date.now();
   const queue = waitingQueues[mode];
+  const interestsArr = interests || userInterests.get(socketId) || [];
+  const userAllSafe = allSafe(interestsArr);
+
+  function isCompatible(aInterests: string[], aAllSafe: boolean, bInterests: string[], bAllSafe: boolean): boolean {
+    if (aAllSafe && hasProhibited(bInterests)) return false;
+    if (bAllSafe && hasProhibited(aInterests)) return false;
+    return true;
+  }
 
   const filtered = queue.filter((w) => w.socketId !== socketId);
 
   if (filtered.length > 0) {
-    const partner = filtered[0];
-    queue.length = 0;
-    queue.push(...filtered.filter((w) => w.socketId !== partner.socketId));
+    let partner: WaitingUser | undefined;
 
-    const roomId = `room-${partner.socketId}-${socketId}`;
-    activeRooms.set(roomId, { user1: partner.socketId, user2: socketId });
-    userToRoom.set(partner.socketId, roomId);
-    userToRoom.set(socketId, roomId);
+    if (interestsArr.length > 0) {
+      partner = filtered.find((w) => {
+        const wInterests = w.interests || userInterests.get(w.socketId) || [];
+        if (!isCompatible(interestsArr, userAllSafe, wInterests, allSafe(wInterests))) return false;
+        return wInterests.some((i) => interestsArr.includes(i));
+      });
+    }
 
-    return {
-      user1: partner.socketId,
-      user2: socketId,
-      roomId,
-      country1: partner.country,
-      country2: country,
-    };
+    if (!partner) {
+      partner = filtered.find((w) => {
+        if (!isCompatible(interestsArr, userAllSafe, w.interests || userInterests.get(w.socketId) || [], allSafe(w.interests || userInterests.get(w.socketId) || []))) return false;
+        return (now - w.joinedAt) >= 30000;
+      });
+    }
+
+    if (!partner) {
+      partner = filtered.find((w) => {
+        if (!isCompatible(interestsArr, userAllSafe, w.interests || userInterests.get(w.socketId) || [], allSafe(w.interests || userInterests.get(w.socketId) || []))) return false;
+        return true;
+      });
+    }
+
+    if (partner) {
+      queue.length = 0;
+      queue.push(...filtered.filter((w) => w.socketId !== partner.socketId));
+
+      const roomId = `room-${partner.socketId}-${socketId}`;
+      activeRooms.set(roomId, { user1: partner.socketId, user2: socketId });
+      userToRoom.set(partner.socketId, roomId);
+      userToRoom.set(socketId, roomId);
+
+      const wInterests = partner.interests || userInterests.get(partner.socketId) || [];
+      const shared = interestsArr.filter((i) => wInterests.includes(i));
+
+      return {
+        user1: partner.socketId,
+        user2: socketId,
+        roomId,
+        country1: partner.country,
+        country2: country,
+        sharedInterests: shared,
+      };
+    }
   }
 
   const alreadyWaiting = queue.some((w) => w.socketId === socketId);
   if (!alreadyWaiting) {
-    queue.push({ socketId, joinedAt: now, mode, country });
+    queue.push({ socketId, joinedAt: now, mode, country, interests: interestsArr });
   }
 
   return null;
@@ -93,17 +177,20 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("find-stranger", (data?: { mode?: string; country?: string }) => {
+  socket.on("find-stranger", (data?: { mode?: string; country?: string; interests?: string[] }) => {
     const mode = data?.mode === "text" ? "text" : "video";
+    const interests = data?.interests || [];
     userModes.set(socket.id, mode);
+    if (interests.length > 0) updateInterestCounts(socket.id, interests);
     broadcastOnlineCount();
     console.log(`[Server] ${socket.id} looking for stranger (${mode})`);
-    const result = findPartner(socket.id, mode, userCountry.get(socket.id));
+    const result = findPartner(socket.id, mode, userCountry.get(socket.id), interests);
 
     if (result) {
-      io.to(result.user1).emit("matched", { partnerId: result.user2, roomId: result.roomId, isInitiator: true, partnerCountry: result.country2 });
-      io.to(result.user2).emit("matched", { partnerId: result.user1, roomId: result.roomId, isInitiator: false, partnerCountry: result.country1 });
-      console.log(`[Server] Paired: ${result.user1} <-> ${result.user2}`);
+      const { user1, user2, roomId, country1, country2, sharedInterests } = result;
+      io.to(user1).emit("matched", { partnerId: user2, roomId, isInitiator: true, partnerCountry: country2, sharedInterests });
+      io.to(user2).emit("matched", { partnerId: user1, roomId, isInitiator: false, partnerCountry: country1, sharedInterests });
+      console.log(`[Server] Paired: ${user1} <-> ${user2} (shared: ${sharedInterests?.join(", ") || "none"})`);
     } else {
       socket.emit("waiting");
       console.log(`[Server] ${socket.id} added to queue`);
@@ -200,6 +287,14 @@ io.on("connection", (socket) => {
     userCountry.delete(socket.id);
     userFeedbackReceived.delete(socket.id);
     userFeedbackGiven.delete(socket.id);
+    const oldInterests = userInterests.get(socket.id);
+    if (oldInterests) {
+      for (const i of oldInterests) {
+        const c = interestCounts.get(i);
+        if (c) interestCounts.set(i, c - 1);
+      }
+      userInterests.delete(socket.id);
+    }
     console.log(`[Server] User disconnected: ${socket.id}`);
 
     for (const q of [waitingQueues.video, waitingQueues.text]) {

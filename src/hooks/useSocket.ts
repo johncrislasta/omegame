@@ -8,7 +8,7 @@ const SOCKET_URL =
     ? process.env.NEXT_PUBLIC_SIGNALING_URL || window.location.origin
     : "http://localhost:3000";
 
-type OnlineCount = { total: number; video: number; text: number; countries: Record<string, number> };
+type OnlineCount = { total: number; video: number; text: number; countries: Record<string, number>; topInterests?: { interest: string; count: number }[] };
 
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
