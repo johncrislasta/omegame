@@ -10,10 +10,12 @@ function ChatContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const mode = (searchParams.get("mode") === "text" ? "text" : "video") as "video" | "text";
+  const interestsParam = searchParams.get("interests") || "";
+  const interests = interestsParam ? interestsParam.split(",").filter(Boolean) : [];
   const { onlineCount } = useSocket();
 
   const switchMode = (newMode: string) => {
-    router.push(`/chat?mode=${newMode}`);
+    router.push(`/chat?mode=${newMode}${interestsParam ? `&interests=${encodeURIComponent(interestsParam)}` : ""}`);
   };
 
   return (
@@ -45,7 +47,7 @@ function ChatContent() {
           </div>
         </div>
       </header>
-      <VideoChat key={mode} mode={mode} />
+      <VideoChat key={mode} mode={mode} interests={interests} />
     </div>
   );
 }

@@ -16,9 +16,10 @@ type SnapCorner = "top-right" | "top-left" | "bottom-right" | "bottom-left";
 
 interface VideoChatProps {
   mode?: "video" | "text";
+  interests?: string[];
 }
 
-export default function VideoChat({ mode = "video" }: VideoChatProps) {
+export default function VideoChat({ mode = "video", interests = [] }: VideoChatProps) {
   const { emit, on, isConnected } = useSocket();
   const webrtc = useWebRTC(emit);
   const myCountry = useCountry();
@@ -42,6 +43,9 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
   const [containerLandscape, setContainerLandscape] = useState(true);
   const [partnerCountry, setPartnerCountry] = useState<string | null>(null);
   const [incomingFeedback, setIncomingFeedback] = useState<{ type: string; isPositive: boolean } | null>(null);
+  const [sharedInterests, setSharedInterests] = useState<string[]>([]);
+  const [searchStartTime, setSearchStartTime] = useState<number>(0);
+  const [searchPhase, setSearchPhase] = useState<"exact" | "broad" | "any">("exact");
 
   const dragRef = useRef<{ startX: number; startY: number; startLeft: number; startTop: number; moved: boolean } | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
@@ -87,6 +91,9 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
     setPartnerPendingPlayAgain(false);
     pendingPlayAgainRef.current = false;
     setPartnerCountry(null);
+    setSharedInterests([]);
+    setSearchStartTime(0);
+    setSearchPhase("exact");
   }, []);
 
   const handleVideoDragStart = useCallback((e: React.PointerEvent) => {
@@ -154,15 +161,19 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
     stopSearchRef.current = true;
     emit("skip");
     setStatus("waiting");
-    emit("find-stranger", { mode });
-  }, [webrtc, resetState, emit, mode]);
+    setSearchStartTime(Date.now());
+    setSearchPhase("exact");
+    emit("find-stranger", { mode, interests });
+  }, [webrtc, resetState, emit, mode, interests]);
 
   const handleFindStranger = useCallback(() => {
     stopSearchRef.current = false;
     resetState();
     setStatus("waiting");
-    emit("find-stranger", { mode });
-  }, [resetState, emit, mode]);
+    setSearchStartTime(Date.now());
+    setSearchPhase("exact");
+    emit("find-stranger", { mode, interests });
+  }, [resetState, emit, mode, interests]);
 
   const handleStopSearch = useCallback(() => {
     stopSearchRef.current = true;
@@ -286,9 +297,10 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
 
     cleanups.push(
       on("matched", async (data: unknown) => {
-        const { partnerId: pid, isInitiator, partnerCountry: pc } = data as { partnerId: string; roomId: string; isInitiator: boolean; partnerCountry?: string };
+        const { partnerId: pid, isInitiator, partnerCountry: pc, sharedInterests: si } = data as { partnerId: string; roomId: string; isInitiator: boolean; partnerCountry?: string; sharedInterests?: string[] };
         partnerIdRef.current = pid;
         if (pc) setPartnerCountry(pc);
+        if (si && si.length > 0) setSharedInterests(si);
         setStatus("connecting");
 
         if (mode === "text") {
@@ -298,6 +310,12 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
             setChatMessages((prev) => [
               ...prev,
               { id: uuid(), text: `Stranger is from ${flag} ${pc.toUpperCase()}`, sender: "stranger", timestamp: Date.now(), kind: "feedback" },
+            ]);
+          }
+          if (si && si.length > 0) {
+            setChatMessages((prev) => [
+              ...prev,
+              { id: uuid(), text: `You both are interested in ${si.join(", ")}`, sender: "stranger", timestamp: Date.now(), kind: "feedback" },
             ]);
           }
           return;
@@ -465,7 +483,7 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
         if (mode === "video") webrtc.cleanup();
         resetState();
         setTimeout(() => {
-          emit("find-stranger", { mode });
+          emit("find-stranger", { mode, interests });
           setStatus("waiting");
         }, 300);
       })
@@ -504,6 +522,16 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
   useEffect(() => {
     if (myCountry) emit("set-country", myCountry);
   }, [myCountry, emit]);
+
+  useEffect(() => {
+    if (status !== "waiting" || !searchStartTime || interests.length === 0) return;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - searchStartTime;
+      if (elapsed >= 60000) setSearchPhase("any");
+      else if (elapsed >= 30000) setSearchPhase("broad");
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [status, searchStartTime, interests]);
 
   return (
     <div className="flex-1 flex flex-col bg-zinc-950 min-h-0">
@@ -544,8 +572,13 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
                     className="w-full h-full object-cover"
                   />
                   {partnerCountry && countryFlagUrl(partnerCountry) && (
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-1 z-10" title={partnerCountry}>
+                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-1 z-10 flex items-center gap-1" title={partnerCountry}>
                       <img src={countryFlagUrl(partnerCountry)} alt={partnerCountry} className="w-6 h-[15px] rounded-sm" />
+                      {sharedInterests.length > 0 && (
+                        <span className="text-white text-[10px] font-medium ml-1 truncate max-w-[120px]">
+                          {sharedInterests.join(", ")}
+                        </span>
+                      )}
                     </div>
                   )}
                   </>
@@ -554,7 +587,15 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
                     {status === "waiting" && (
                       <div className="text-center">
                         <div className="text-4xl mb-4 animate-spin">🔍</div>
-                        <div className="text-zinc-400 text-lg">Looking for someone...</div>
+                        <div className="text-zinc-400 text-lg">
+                          {interests.length > 0
+                            ? searchPhase === "exact"
+                              ? `Looking for someone interested in ${interests.join(", ")}...`
+                              : searchPhase === "broad"
+                                ? `Looking for someone interested in ${interests.join(" or ")}...`
+                                : "Looking for someone..."
+                            : "Looking for someone..."}
+                        </div>
                         <div className="text-zinc-600 text-sm mt-2">This may take a moment</div>
                       </div>
                     )}
@@ -655,7 +696,15 @@ export default function VideoChat({ mode = "video" }: VideoChatProps) {
             {status === "waiting" && (
               <div className="text-center">
                 <div className="text-4xl mb-4 animate-spin">🔍</div>
-                <div className="text-zinc-400 text-lg">Looking for someone...</div>
+                <div className="text-zinc-400 text-lg">
+                  {interests.length > 0
+                    ? searchPhase === "exact"
+                      ? `Looking for someone interested in ${interests.join(", ")}...`
+                      : searchPhase === "broad"
+                        ? `Looking for someone interested in ${interests.join(" or ")}...`
+                        : "Looking for someone..."
+                    : "Looking for someone..."}
+                </div>
                 <div className="text-zinc-600 text-sm mt-2">This may take a moment</div>
               </div>
             )}
