@@ -8,7 +8,7 @@ import GameMenu from "./GameMenu";
 import GameOverlay from "./GameOverlay";
 import ChatBox from "./ChatBox";
 import type { ChatMessage, GameType } from "@/lib/types";
-import { countryFlagUrl, countryToFlag } from "@/lib/countryFlag";
+import { countryFlagUrl } from "@/lib/countryFlag";
 import { v4 as uuid } from "uuid";
 
 type Status = "idle" | "waiting" | "matched" | "connecting" | "connected" | "disconnected";
@@ -339,10 +339,9 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
         if (mode === "text") {
           setStatus("connected");
           if (pc) {
-            const flag = countryToFlag(pc);
             setChatMessages((prev) => [
               ...prev,
-              { id: uuid(), text: `Stranger is from ${flag} ${pc.toUpperCase()}`, sender: "stranger", timestamp: Date.now(), kind: "feedback" },
+              { id: uuid(), text: `Stranger is from ${pc.toUpperCase()}`, sender: "stranger", timestamp: Date.now(), kind: "feedback", flagCode: pc },
             ]);
           }
           if (si && si.length > 0) {

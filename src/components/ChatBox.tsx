@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { ChatMessage } from "@/lib/types";
+import { countryFlagUrl } from "@/lib/countryFlag";
 
 interface ChatBoxProps {
   messages: ChatMessage[];
@@ -93,6 +94,9 @@ export default function ChatBox({ messages, onSendMessage, onFeedback, incomingF
           msg.kind === "feedback" ? (
             <div key={msg.id} className="flex justify-center">
               <div className="bg-zinc-800/80 border border-zinc-700 px-3 py-1 rounded-full text-sm flex items-center gap-1.5">
+                {msg.flagCode && (
+                  <img src={countryFlagUrl(msg.flagCode)} alt={msg.flagCode} className="w-5 h-[13px] rounded-sm" />
+                )}
                 <span>{msg.text}</span>
               </div>
             </div>
