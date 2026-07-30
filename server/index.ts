@@ -1,5 +1,7 @@
 import { Server } from "socket.io";
 import { createServer } from "http";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
 const port = parseInt(process.env.PORT || "3001", 10);
 const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
@@ -69,15 +71,42 @@ function updateInterestCounts(socketId: string, newInterests: string[]) {
 function getTopInterests(n: number): { interest: string; count: number }[] {
   return [...interestCounts.entries()]
     .filter(([, c]) => c > 0)
+    .filter(([interest]) => !isProhibited(interest))
     .sort((a, b) => b[1] - a[1])
     .slice(0, n)
     .map(([interest, count]) => ({ interest, count }));
+}
+
+const prohibitedRaw: string[] = JSON.parse(readFileSync(resolve(import.meta.dirname ?? __dirname, "../src/data/prohibited-interests.json"), "utf-8"));
+const prohibitedSet = new Set(prohibitedRaw.map((s: string) => s.toLowerCase().trim()));
+
+function normalizeInterest(s: string): string {
+  return s.toLowerCase().trim();
+}
+
+function isProhibited(interest: string): boolean {
+  return prohibitedSet.has(normalizeInterest(interest));
+}
+
+function hasProhibited(interests: string[]): boolean {
+  return interests.some(isProhibited);
+}
+
+function allSafe(interests: string[]): boolean {
+  return interests.length > 0 && interests.every((i) => !isProhibited(i));
 }
 
 function findPartner(socketId: string, mode: "video" | "text", country?: string, interests?: string[]) {
   const now = Date.now();
   const queue = waitingQueues[mode];
   const interestsArr = interests || userInterests.get(socketId) || [];
+  const userAllSafe = allSafe(interestsArr);
+
+  function isCompatible(aInterests: string[], aAllSafe: boolean, bInterests: string[], bAllSafe: boolean): boolean {
+    if (aAllSafe && hasProhibited(bInterests)) return false;
+    if (bAllSafe && hasProhibited(aInterests)) return false;
+    return true;
+  }
 
   const filtered = queue.filter((w) => w.socketId !== socketId);
 
@@ -87,12 +116,23 @@ function findPartner(socketId: string, mode: "video" | "text", country?: string,
     if (interestsArr.length > 0) {
       partner = filtered.find((w) => {
         const wInterests = w.interests || userInterests.get(w.socketId) || [];
+        if (!isCompatible(interestsArr, userAllSafe, wInterests, allSafe(wInterests))) return false;
         return wInterests.some((i) => interestsArr.includes(i));
       });
     }
 
     if (!partner) {
-      partner = filtered.find((w) => (now - w.joinedAt) >= 30000) || filtered[0];
+      partner = filtered.find((w) => {
+        if (!isCompatible(interestsArr, userAllSafe, w.interests || userInterests.get(w.socketId) || [], allSafe(w.interests || userInterests.get(w.socketId) || []))) return false;
+        return (now - w.joinedAt) >= 30000;
+      });
+    }
+
+    if (!partner) {
+      partner = filtered.find((w) => {
+        if (!isCompatible(interestsArr, userAllSafe, w.interests || userInterests.get(w.socketId) || [], allSafe(w.interests || userInterests.get(w.socketId) || []))) return false;
+        return true;
+      });
     }
 
     if (partner) {

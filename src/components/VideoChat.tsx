@@ -19,14 +19,17 @@ interface VideoChatProps {
   interests?: string[];
 }
 
-export default function VideoChat({ mode = "video", interests = [] }: VideoChatProps) {
+export default function VideoChat({ mode = "video", interests: propInterests = [] }: VideoChatProps) {
   const { emit, on, isConnected } = useSocket();
   const webrtc = useWebRTC(emit);
   const myCountry = useCountry();
+  const { onlineCount } = useSocket();
 
   const [status, setStatus] = useState<Status>("idle");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [gameType, setGameType] = useState<GameType>(null);
+  const [localInterests, setLocalInterests] = useState<string[]>(propInterests);
+  const [localInput, setLocalInput] = useState("");
   const [gameState, setGameState] = useState<Record<string, unknown>>({});
   const [isGameHost, setIsGameHost] = useState(false);
   const [pendingInvite, setPendingInvite] = useState<{ from: string; gameType: string } | null>(null);
@@ -55,6 +58,36 @@ export default function VideoChat({ mode = "video", interests = [] }: VideoChatP
   const pendingPlayAgainRef = useRef(false);
   const gameTypeRef = useRef<GameType>(null);
   const stopSearchRef = useRef(false);
+
+  const interestInputRef = useRef<HTMLInputElement>(null);
+
+  function addLocalInterest(value: string) {
+    const trimmed = value.trim().toLowerCase();
+    if (trimmed && !localInterests.includes(trimmed)) {
+      setLocalInterests((prev) => [...prev, trimmed]);
+    }
+  }
+
+  function removeLocalInterest(index: number) {
+    setLocalInterests((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function handleInterestKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addLocalInterest(localInput);
+      setLocalInput("");
+    } else if (e.key === "Backspace" && !localInput && localInterests.length > 0) {
+      removeLocalInterest(localInterests.length - 1);
+    }
+  }
+
+  function handleInterestBlur() {
+    if (localInput.trim()) {
+      addLocalInterest(localInput);
+      setLocalInput("");
+    }
+  }
 
   useEffect(() => {
     gameTypeRef.current = gameType;
@@ -163,8 +196,8 @@ export default function VideoChat({ mode = "video", interests = [] }: VideoChatP
     setStatus("waiting");
     setSearchStartTime(Date.now());
     setSearchPhase("exact");
-    emit("find-stranger", { mode, interests });
-  }, [webrtc, resetState, emit, mode, interests]);
+    emit("find-stranger", { mode, interests: localInterests });
+  }, [webrtc, resetState, emit, mode, localInterests]);
 
   const handleFindStranger = useCallback(() => {
     stopSearchRef.current = false;
@@ -172,8 +205,8 @@ export default function VideoChat({ mode = "video", interests = [] }: VideoChatP
     setStatus("waiting");
     setSearchStartTime(Date.now());
     setSearchPhase("exact");
-    emit("find-stranger", { mode, interests });
-  }, [resetState, emit, mode, interests]);
+    emit("find-stranger", { mode, interests: localInterests });
+  }, [resetState, emit, mode, localInterests]);
 
   const handleStopSearch = useCallback(() => {
     stopSearchRef.current = true;
@@ -483,7 +516,7 @@ export default function VideoChat({ mode = "video", interests = [] }: VideoChatP
         if (mode === "video") webrtc.cleanup();
         resetState();
         setTimeout(() => {
-          emit("find-stranger", { mode, interests });
+          emit("find-stranger", { mode, interests: localInterests });
           setStatus("waiting");
         }, 300);
       })
@@ -502,7 +535,7 @@ export default function VideoChat({ mode = "video", interests = [] }: VideoChatP
     return () => {
       cleanups.forEach((fn) => fn());
     };
-  }, [on, webrtc, emit, resetState, mode]);
+  }, [on, webrtc, emit, resetState, mode, localInterests]);
 
   useEffect(() => {
     if (mode === "text") return;
@@ -524,14 +557,14 @@ export default function VideoChat({ mode = "video", interests = [] }: VideoChatP
   }, [myCountry, emit]);
 
   useEffect(() => {
-    if (status !== "waiting" || !searchStartTime || interests.length === 0) return;
+    if (status !== "waiting" || !searchStartTime || localInterests.length === 0) return;
     const interval = setInterval(() => {
       const elapsed = Date.now() - searchStartTime;
       if (elapsed >= 60000) setSearchPhase("any");
       else if (elapsed >= 30000) setSearchPhase("broad");
     }, 1000);
     return () => clearInterval(interval);
-  }, [status, searchStartTime, interests]);
+  }, [status, searchStartTime, localInterests]);
 
   return (
     <div className="flex-1 flex flex-col bg-zinc-950 min-h-0">
@@ -588,11 +621,11 @@ export default function VideoChat({ mode = "video", interests = [] }: VideoChatP
                       <div className="text-center">
                         <div className="text-4xl mb-4 animate-spin">🔍</div>
                         <div className="text-zinc-400 text-lg">
-                          {interests.length > 0
+                          {localInterests.length > 0
                             ? searchPhase === "exact"
-                              ? `Looking for someone interested in ${interests.join(", ")}...`
+                              ? `Looking for someone interested in ${localInterests.join(", ")}...`
                               : searchPhase === "broad"
-                                ? `Looking for someone interested in ${interests.join(" or ")}...`
+                                ? `Looking for someone interested in ${localInterests.join(" or ")}...`
                                 : "Looking for someone..."
                             : "Looking for someone..."}
                         </div>
@@ -606,9 +639,48 @@ export default function VideoChat({ mode = "video", interests = [] }: VideoChatP
                       </div>
                     )}
                     {status === "idle" && (
-                      <div className="text-center">
-                        <div className="text-6xl mb-4">🎯</div>
+                      <div className="flex flex-col items-center gap-4 px-4 max-w-md mx-auto w-full">
+                        <div className="text-6xl">🎯</div>
                         <div className="text-zinc-400 text-lg">Ready to meet someone?</div>
+                        <div className="w-full">
+                          <div className="flex flex-wrap items-center gap-2 p-2.5 bg-zinc-900 border border-zinc-700 rounded-lg mb-2 min-h-[44px]">
+                            {localInterests.map((interest, i) => (
+                              <span key={interest} className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-mint/20 text-mint text-xs rounded-full">
+                                {interest}
+                                <button onClick={() => removeLocalInterest(i)} className="hover:text-white transition-colors text-mint/60">✕</button>
+                              </span>
+                            ))}
+                            <input
+                              ref={interestInputRef}
+                              type="text"
+                              value={localInput}
+                              onChange={(e) => setLocalInput(e.target.value)}
+                              onKeyDown={handleInterestKeyDown}
+                              onBlur={handleInterestBlur}
+                              placeholder={localInterests.length === 0 ? "Add interests..." : "Add more..."}
+                              className="flex-1 min-w-[100px] bg-transparent text-white placeholder-zinc-500 outline-none text-xs"
+                            />
+                          </div>
+                          {onlineCount.topInterests && onlineCount.topInterests.length > 0 && (
+                            <div className="flex flex-wrap gap-1 justify-center">
+                              {onlineCount.topInterests.map(({ interest, count }) => (
+                                <button
+                                  key={interest}
+                                  onClick={() => {
+                                    if (!localInterests.includes(interest)) {
+                                      setLocalInterests((prev) => [...prev, interest]);
+                                      setLocalInput("");
+                                      interestInputRef.current?.focus();
+                                    }
+                                  }}
+                                  className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-500 text-zinc-300 text-[10px] rounded-full transition-colors"
+                                >
+                                  {interest} <span className="text-zinc-500">{count}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     {status === "disconnected" && (
@@ -697,11 +769,11 @@ export default function VideoChat({ mode = "video", interests = [] }: VideoChatP
               <div className="text-center">
                 <div className="text-4xl mb-4 animate-spin">🔍</div>
                 <div className="text-zinc-400 text-lg">
-                  {interests.length > 0
+                  {localInterests.length > 0
                     ? searchPhase === "exact"
-                      ? `Looking for someone interested in ${interests.join(", ")}...`
+                      ? `Looking for someone interested in ${localInterests.join(", ")}...`
                       : searchPhase === "broad"
-                        ? `Looking for someone interested in ${interests.join(" or ")}...`
+                        ? `Looking for someone interested in ${localInterests.join(" or ")}...`
                         : "Looking for someone..."
                     : "Looking for someone..."}
                 </div>
@@ -715,9 +787,48 @@ export default function VideoChat({ mode = "video", interests = [] }: VideoChatP
               </div>
             )}
             {status === "idle" && (
-              <div className="text-center">
-                <div className="text-6xl mb-4">💬</div>
+              <div className="flex flex-col items-center gap-4 px-4 max-w-md mx-auto w-full">
+                <div className="text-6xl">💬</div>
                 <div className="text-zinc-400 text-lg">Ready to chat with someone?</div>
+                <div className="w-full">
+                  <div className="flex flex-wrap items-center gap-2 p-2.5 bg-zinc-900 border border-zinc-700 rounded-lg mb-2 min-h-[44px]">
+                    {localInterests.map((interest, i) => (
+                      <span key={interest} className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-mint/20 text-mint text-xs rounded-full">
+                        {interest}
+                        <button onClick={() => removeLocalInterest(i)} className="hover:text-white transition-colors text-mint/60">✕</button>
+                      </span>
+                    ))}
+                    <input
+                      ref={interestInputRef}
+                      type="text"
+                      value={localInput}
+                      onChange={(e) => setLocalInput(e.target.value)}
+                      onKeyDown={handleInterestKeyDown}
+                      onBlur={handleInterestBlur}
+                      placeholder={localInterests.length === 0 ? "Add interests..." : "Add more..."}
+                      className="flex-1 min-w-[100px] bg-transparent text-white placeholder-zinc-500 outline-none text-xs"
+                    />
+                  </div>
+                  {onlineCount.topInterests && onlineCount.topInterests.length > 0 && (
+                    <div className="flex flex-wrap gap-1 justify-center">
+                      {onlineCount.topInterests.map(({ interest, count }) => (
+                        <button
+                          key={interest}
+                          onClick={() => {
+                            if (!localInterests.includes(interest)) {
+                              setLocalInterests((prev) => [...prev, interest]);
+                              setLocalInput("");
+                              interestInputRef.current?.focus();
+                            }
+                          }}
+                          className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-500 text-zinc-300 text-[10px] rounded-full transition-colors"
+                        >
+                          {interest} <span className="text-zinc-500">{count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             {status === "disconnected" && (

@@ -33,6 +33,13 @@ export default function Home() {
     }
   }
 
+  function handleBlur() {
+    if (input.trim()) {
+      addInterest(input);
+      setInput("");
+    }
+  }
+
   const interestsParam = interests.join(",");
 
   return (
@@ -117,6 +124,7 @@ export default function Home() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
+              onBlur={handleBlur}
               placeholder={interests.length === 0 ? "Add interests (e.g. music, gaming, coding)..." : "Add more..."}
               className="flex-1 min-w-[120px] bg-transparent text-white placeholder-zinc-500 outline-none text-sm"
             />
