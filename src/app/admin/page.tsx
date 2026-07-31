@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { formatSupportDate } from "@/lib/relativeTime";
 
 interface Entry {
   name: string;
@@ -101,7 +102,7 @@ export default function AdminPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-mint text-sm font-medium">{e.name}</span>
                   <span className="text-zinc-500 text-xs">${parseFloat(e.amount).toFixed(2)}</span>
-                  <span className="text-zinc-600 text-[10px]">{new Date(e.timestamp).toLocaleDateString()}</span>
+                  <span className="text-zinc-600 text-[10px]">{formatSupportDate(e.timestamp)}</span>
                 </div>
                 {e.message && <p className="text-zinc-400 text-xs mt-0.5">{e.message}</p>}
               </div>
@@ -131,7 +132,7 @@ export default function AdminPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-mint text-sm font-medium">{e.name}</span>
                   <span className="text-zinc-500 text-xs">${parseFloat(e.amount).toFixed(2)}</span>
-                  <span className="text-zinc-600 text-[10px]">{new Date(e.timestamp).toLocaleDateString()}</span>
+                  <span className="text-zinc-600 text-[10px]">{formatSupportDate(e.timestamp)}</span>
                 </div>
                 {e.message && <p className="text-zinc-400 text-xs mt-0.5">{e.message}</p>}
               </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { formatSupportDate } from "@/lib/relativeTime";
 
 interface Supporter {
   id: string;
@@ -15,18 +16,6 @@ interface Supporter {
 const PAYPAL_CLIENT_ID =
   process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "Adfg_LlFfi6dVI0ny7tLiyyCfgYMIILqxz3lP6evbK1uO71fdz_P8beOPsa_vUWjO4N2dd4_4OVEtt4s";
 const AMOUNTS = ["3.00", "5.00", "10.00", "25.00"];
-
-function formatSupportDate(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min${minutes === 1 ? "" : "s"} ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
-  return new Date(timestamp).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-}
 
 function PayPalButton({ amount, onSuccess }: { amount: string; onSuccess: () => void }) {
   const onSuccessRef = useRef(onSuccess);
