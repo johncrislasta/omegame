@@ -42,3 +42,6 @@ next-env.d.ts
 
 certificates
 omegame-logo*
+
+# runtime data
+/src/data/supporters.json
