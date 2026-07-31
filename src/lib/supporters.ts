@@ -9,6 +9,10 @@ export interface SupporterEntry {
   amount: string;
   timestamp: number;
   approved: boolean;
+  provider: "paypal" | "gcash";
+  currency: "USD" | "PHP";
+  referenceNumber?: string;
+  receipt?: string;
 }
 
 let pool: Pool | null = null;
@@ -31,20 +35,33 @@ function toEntry(row: any): SupporterEntry {
     amount: row.amount,
     timestamp: Number(row.timestamp),
     approved: Boolean(row.approved),
+    provider: row.provider === "gcash" ? "gcash" : "paypal",
+    currency: row.currency === "PHP" ? "PHP" : "USD",
+    referenceNumber: row.reference_number || undefined,
+    receipt: row.receipt || undefined,
   };
 }
 
 export async function ensureTable(): Promise<void> {
-  await getPool().query(`
+  const pool = getPool();
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS supporters (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       message TEXT NOT NULL DEFAULT '',
       amount TEXT NOT NULL,
       timestamp BIGINT NOT NULL,
-      approved BOOLEAN NOT NULL DEFAULT FALSE
+      approved BOOLEAN NOT NULL DEFAULT FALSE,
+      provider TEXT NOT NULL DEFAULT 'paypal',
+      currency TEXT NOT NULL DEFAULT 'USD',
+      reference_number TEXT,
+      receipt TEXT
     )
   `);
+  await pool.query(`ALTER TABLE supporters ADD COLUMN IF NOT EXISTS provider TEXT NOT NULL DEFAULT 'paypal'`);
+  await pool.query(`ALTER TABLE supporters ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'USD'`);
+  await pool.query(`ALTER TABLE supporters ADD COLUMN IF NOT EXISTS reference_number TEXT`);
+  await pool.query(`ALTER TABLE supporters ADD COLUMN IF NOT EXISTS receipt TEXT`);
 }
 
 export async function listEntries(approvedOnly: boolean): Promise<SupporterEntry[]> {
@@ -58,9 +75,20 @@ export async function listEntries(approvedOnly: boolean): Promise<SupporterEntry
 
 export async function insertEntry(entry: SupporterEntry): Promise<SupporterEntry> {
   await getPool().query(
-    `INSERT INTO supporters (id, name, message, amount, timestamp, approved)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [entry.id, entry.name, entry.message, entry.amount, entry.timestamp, entry.approved]
+    `INSERT INTO supporters (id, name, message, amount, timestamp, approved, provider, currency, reference_number, receipt)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [
+      entry.id,
+      entry.name,
+      entry.message,
+      entry.amount,
+      entry.timestamp,
+      entry.approved,
+      entry.provider,
+      entry.currency,
+      entry.referenceNumber ?? null,
+      entry.receipt ?? null,
+    ]
   );
   return entry;
 }

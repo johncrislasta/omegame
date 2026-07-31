@@ -27,6 +27,8 @@ async function main() {
       amount: String(e.amount ?? "0"),
       timestamp: e.timestamp,
       approved: e.approved ?? false,
+      provider: "paypal",
+      currency: "USD",
     });
   }
   console.log(`Imported ${entries.length} entries.`);
