@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useRef, KeyboardEvent } from "react";
 import { useSocket } from "@/hooks/useSocket";
 import { countryFlagUrl } from "@/lib/countryFlag";
+import SupportModal from "@/components/SupportModal";
 
 export default function Home() {
   const [mounted] = useState(true);
@@ -11,6 +12,7 @@ export default function Home() {
   const [interests, setInterests] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const [showSupport, setShowSupport] = useState(false);
 
   function addInterest(value: string) {
     const trimmed = value.trim().toLowerCase();
@@ -178,6 +180,17 @@ export default function Home() {
             </div>
           ))}
         </div>
+
+        <div className="mt-8">
+          <button
+            onClick={() => setShowSupport(true)}
+            className="text-zinc-600 hover:text-zinc-400 text-xs transition-colors"
+          >
+            &hearts; Support OmeGame
+          </button>
+        </div>
+
+        {showSupport && <SupportModal onClose={() => setShowSupport(false)} />}
       </div>
     </div>
   );
