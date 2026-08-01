@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { formatSupportDate } from "@/lib/relativeTime";
+import { useCountry } from "@/hooks/useCountry";
 
 interface Supporter {
   id: string;
@@ -92,6 +93,10 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
   const [recordId, setRecordId] = useState<string | null>(null);
   const recordedRef = useRef(false);
 
+  const country = useCountry();
+  const showGcash = country === null || country === "PH";
+  const activeProvider = showGcash ? provider : "paypal";
+
   useEffect(() => {
     fetch("/api/thanks").then((r) => r.json()).then(setSupporters).catch(() => {});
   }, []);
@@ -133,7 +138,7 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    if (provider === "gcash") {
+    if (activeProvider === "gcash") {
       if (!REF_REGEX.test(ref.trim())) {
         setError("Please enter the reference number shown on your GCash receipt (6-30 digits).");
         return;
@@ -142,7 +147,7 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
     }
     setSending(true);
     try {
-      if (provider === "paypal" && recordId) {
+      if (activeProvider === "paypal" && recordId) {
         const res = await fetch("/api/thanks", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -159,10 +164,10 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
           body: JSON.stringify({
             name: name.trim(),
             message: message.trim(),
-            amount: provider === "gcash" ? gcAmount : amount,
-            provider,
-            referenceNumber: provider === "gcash" ? ref.trim() : undefined,
-            receipt: provider === "gcash" ? receipt ?? undefined : undefined,
+            amount: activeProvider === "gcash" ? gcAmount : amount,
+            provider: activeProvider,
+            referenceNumber: activeProvider === "gcash" ? ref.trim() : undefined,
+            receipt: activeProvider === "gcash" ? receipt ?? undefined : undefined,
           }),
         });
         const data = await res.json();
@@ -197,22 +202,24 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
               <button
                 onClick={() => setProvider("paypal")}
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  provider === "paypal" ? "bg-mint text-zinc-900" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                  activeProvider === "paypal" ? "bg-mint text-zinc-900" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                 }`}
               >
                 PayPal
               </button>
-              <button
-                onClick={() => setProvider("gcash")}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  provider === "gcash" ? "bg-mint text-zinc-900" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                }`}
-              >
-                GCash
-              </button>
+              {showGcash && (
+                <button
+                  onClick={() => setProvider("gcash")}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    activeProvider === "gcash" ? "bg-mint text-zinc-900" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                  }`}
+                >
+                  GCash
+                </button>
+              )}
             </div>
 
-            {provider === "gcash" ? (
+            {activeProvider === "gcash" ? (
               <>
                 <div className="flex flex-col gap-3 mb-4">
                   <p className="text-zinc-400 text-xs font-medium">Choose amount</p>
@@ -296,7 +303,7 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3">
             <p className="text-zinc-400 text-sm">
-              {provider === "gcash"
+              {activeProvider === "gcash"
                 ? `Thanks for paying ₱${gcAmount}! Leave your name so I can thank you:`
                 : "Payment confirmed! Leave your name so I can thank you:"}
             </p>
@@ -308,7 +315,7 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
               required
               className="w-full bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mint placeholder-zinc-500"
             />
-            {provider === "gcash" && (
+            {activeProvider === "gcash" && (
               <input
                 type="text"
                 inputMode="numeric"
@@ -326,7 +333,7 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
               rows={2}
               className="w-full bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mint placeholder-zinc-500 resize-none"
             />
-            {provider === "gcash" && (
+            {activeProvider === "gcash" && (
               <label className="block">
                 <span className="text-zinc-400 text-xs">Receipt screenshot (optional)</span>
                 <input
