@@ -54,11 +54,24 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
     const tick = () => {
       const elapsed = (Date.now() - roundStartAt) / 1000;
       setTimeLeft(Math.max(0, Math.ceil(15 - elapsed)));
+      if (elapsed >= 15 && !roundResolvedRef.current) {
+        roundResolvedRef.current = true;
+        if (myChoice && opponentChoice) {
+          const result = computeWinner(myChoice, opponentChoice);
+          setRounds((prev) => [...prev, { myChoice, oppChoice: opponentChoice, result }]);
+        } else if (myChoice) {
+          setRounds((prev) => [...prev, { myChoice, oppChoice: null, result: "win" }]);
+        } else if (opponentChoice) {
+          setRounds((prev) => [...prev, { myChoice: null, oppChoice: opponentChoice, result: "lose" }]);
+        } else {
+          setRounds((prev) => [...prev, { myChoice: null, oppChoice: null, result: "draw" }]);
+        }
+      }
     };
     tick();
     const interval = setInterval(tick, 100);
     return () => clearInterval(interval);
-  }, [roundStartAt]);
+  }, [roundStartAt, myChoice, opponentChoice]);
 
   const isWaitingReveal = myChoice !== null && opponentChoice !== null && !roundResolvedRef.current;
 
@@ -69,23 +82,6 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
       setRounds((prev) => [...prev, { myChoice, oppChoice: opponentChoice, result }]);
     }
   }, [isWaitingReveal, myChoice, opponentChoice]);
-
-  useEffect(() => {
-    const remaining = Math.max(0, Math.ceil(15 - (Date.now() - roundStartAt) / 1000));
-    if (remaining <= 0 && !roundResolvedRef.current) {
-      roundResolvedRef.current = true;
-      if (myChoice && opponentChoice) {
-        const result = computeWinner(myChoice, opponentChoice);
-        setRounds((prev) => [...prev, { myChoice, oppChoice: opponentChoice, result }]);
-      } else if (myChoice) {
-        setRounds((prev) => [...prev, { myChoice, oppChoice: null, result: "win" }]);
-      } else if (opponentChoice) {
-        setRounds((prev) => [...prev, { myChoice: null, oppChoice: opponentChoice, result: "lose" }]);
-      } else {
-        setRounds((prev) => [...prev, { myChoice: null, oppChoice: null, result: "draw" }]);
-      }
-    }
-  }, [roundStartAt, myChoice, opponentChoice]);
 
   const myScore = useMemo(() => rounds.filter((r) => r.result === "win").length, [rounds]);
   const oppScore = useMemo(() => rounds.filter((r) => r.result === "lose").length, [rounds]);
