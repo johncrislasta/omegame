@@ -32,9 +32,24 @@ type RoundResult = "win" | "lose" | "draw";
 export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTacToeProps) {
   const [myBoard, setMyBoard] = useState<(string | null)[]>(Array(9).fill(null));
   const [round, setRound] = useState(1);
+  const [cellSize, setCellSize] = useState(80);
   const roundRef = useRef(1);
+  const boardRef = useRef<HTMLDivElement>(null);
   const onStateChangeRef = useRef(onStateChange);
   onStateChangeRef.current = onStateChange;
+
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    const container = el.closest<HTMLElement>("[data-game-area]");
+    if (!container) return;
+    const ro = new ResizeObserver(() => {
+      const h = container.clientHeight;
+      setCellSize(Math.max(44, Math.min(88, Math.floor((h - 124) / 3))));
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
 
   const myMark = isPlayerX
     ? (round % 2 === 1 ? "X" : "O")
@@ -98,7 +113,7 @@ export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTa
   return (
     <>
     <div className="flex flex-col items-center gap-3">
-      <div className="text-white text-lg font-bold drop-shadow-lg flex items-center gap-2">
+      <div className="text-zinc-900 dark:text-white text-lg font-bold drop-shadow-lg flex items-center gap-2">
         {roundOver && roundResult !== null && roundResult !== "draw" && (
           <span className={roundResult === "win" ? "animate-win-emoji" : "animate-lose-emoji"}>
             {roundResult === "win" ? "🥳" : "😭"}
@@ -114,13 +129,14 @@ export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTa
           ? "Your Turn"
           : "Opponent's Turn"}
       </div>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div ref={boardRef} className="grid grid-cols-3 gap-1.5">
         {effectiveBoard.map((cell, i) => (
           <button
             key={i}
             onClick={() => handleCellClick(i)}
             disabled={!isMyTurn || cell !== null || roundOver}
-            className={`w-20 h-20 sm:w-24 sm:h-24 rounded-lg text-3xl sm:text-4xl font-bold flex items-center justify-center ${cell === "X" ? "bg-blue-500/80 text-white" : cell === "O" ? "bg-red-500/80 text-white" : "bg-white/20 hover:bg-white/30 text-white"} ${isMyTurn && !cell && !roundOver ? "cursor-pointer active:scale-95" : "cursor-default"} transition-all duration-150 backdrop-blur-sm`}
+            style={{ width: cellSize, height: cellSize, fontSize: cellSize * 0.4 }}
+            className={`rounded-lg font-bold flex items-center justify-center ${cell === "X" ? "bg-blue-500/80 text-white" : cell === "O" ? "bg-red-500/80 text-white" : "bg-zinc-200 hover:bg-zinc-300 dark:bg-white/20 dark:hover:bg-white/30 text-zinc-900 dark:text-white"} ${isMyTurn && !cell && !roundOver ? "cursor-pointer active:scale-95" : "cursor-default"} transition-all duration-150 backdrop-blur-sm`}
           >
             {cell}
           </button>
@@ -130,14 +146,14 @@ export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTa
       {roundOver && (
         <button
           onClick={handlePlayAgain}
-          className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg backdrop-blur-sm text-sm transition-colors"
+          className="px-4 py-2 bg-zinc-200 hover:bg-zinc-300 dark:bg-white/20 dark:hover:bg-white/30 text-zinc-900 dark:text-white rounded-lg backdrop-blur-sm text-sm transition-colors"
         >
           Play Again
         </button>
       )}
 
       {!roundOver && (
-        <div className="text-white/70 text-sm">
+        <div className="text-zinc-600 dark:text-white/70 text-sm">
           You are: <span className={`font-bold ${myMark === "X" ? "text-blue-400" : "text-red-400"}`}>{myMark}</span>
         </div>
       )}

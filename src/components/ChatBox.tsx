@@ -136,7 +136,7 @@ export default function ChatBox({ messages, onSendMessage, onFeedback, incomingF
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           placeholder="Type a message..."
-          className="flex-1 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 placeholder-zinc-500"
+          className="flex-1 min-w-0 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 placeholder-zinc-500"
         />
         <div className="relative flex shrink-0 gap-1" ref={thumbsRef}>
           <button

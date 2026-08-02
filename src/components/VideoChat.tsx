@@ -44,6 +44,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
   const [pipEnlarged, setPipEnlarged] = useState(false);
   const [pipPinned, setPipPinned] = useState(false);
   const [containerLandscape, setContainerLandscape] = useState(true);
+  const [containerWidth, setContainerWidth] = useState(0);
   const [partnerCountry, setPartnerCountry] = useState<string | null>(null);
   const [incomingFeedback, setIncomingFeedback] = useState<{ type: string; isPositive: boolean } | null>(null);
   const [sharedInterests, setSharedInterests] = useState<string[]>([]);
@@ -102,6 +103,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
+      setContainerWidth(width);
       setContainerLandscape(width >= height);
     });
     ro.observe(el);
@@ -186,6 +188,9 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
     "bottom-right": "bottom-3 right-3 origin-bottom-right",
     "bottom-left": "bottom-3 left-3 origin-bottom-left",
   };
+
+  const pipSplitLandscape = containerLandscape && containerWidth >= 640;
+  const compactVideo = mode === "video" && containerWidth > 0 && containerWidth < 640 && showChat && gameType;
 
   const handleSkip = useCallback(() => {
     webrtc.cleanup();
@@ -582,7 +587,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
         <div className="flex-1 flex flex-col min-h-0">
           {mode === "video" ? (
             <div ref={videoContainerRef} className="flex-1 relative min-h-0">
-              <div className={`absolute bg-zinc-100 dark:bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${ pipPinned ? containerLandscape ? snapCorner.endsWith("left") ? "top-0 bottom-0 left-1/2 right-0" : "top-0 bottom-0 left-0 right-1/2" : snapCorner.startsWith("top") ? "top-1/2 bottom-0 left-0 right-0" : "top-0 bottom-1/2 left-0 right-0" : "inset-0" }`}>
+              <div className={`absolute bg-zinc-100 dark:bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${ compactVideo ? "top-0 bottom-0 left-0 right-1/2" : pipPinned ? pipSplitLandscape ? snapCorner.endsWith("left") ? "top-0 bottom-0 left-1/2 right-0" : "top-0 bottom-0 left-0 right-1/2" : snapCorner.startsWith("top") ? "top-1/2 bottom-0 left-0 right-0" : "top-0 bottom-1/2 left-0 right-0" : "inset-0" }`}>
                 {webrtc.remoteStream ? (
                   <>
                   <video
@@ -684,19 +689,21 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
 
               <div
                 data-pip
-                onPointerDown={pipPinned ? undefined : handleVideoDragStart}
-                onPointerMove={pipPinned ? undefined : handleVideoDragMove}
-                onPointerUp={pipPinned ? undefined : handleVideoDragEnd}
-                className={`absolute bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,width,height,transform] duration-200 ease-out ${
-                  pipPinned
-                    ? containerLandscape
-                      ? snapCorner.endsWith("left")
-                        ? "top-0 left-0 w-1/2 h-full"
-                        : "top-0 right-0 w-1/2 h-full"
-                      : snapCorner.startsWith("top")
-                        ? "top-0 left-0 w-full h-1/2"
-                        : "bottom-0 left-0 w-full h-1/2"
-                    : `${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 ${pipEnlarged ? "scale-[2.5]" : "scale-100"}`
+                onPointerDown={compactVideo || pipPinned ? undefined : handleVideoDragStart}
+                onPointerMove={compactVideo || pipPinned ? undefined : handleVideoDragMove}
+                onPointerUp={compactVideo || pipPinned ? undefined : handleVideoDragEnd}
+                className={`absolute bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,width,height,transform,transform-origin] duration-200 ease-out ${
+                  compactVideo
+                    ? "top-0 bottom-0 right-0 w-1/2"
+                    : pipPinned
+                      ? pipSplitLandscape
+                        ? snapCorner.endsWith("left")
+                          ? "top-0 left-0 w-1/2 h-full"
+                          : "top-0 right-0 w-1/2 h-full"
+                        : snapCorner.startsWith("top")
+                          ? "top-0 left-0 w-full h-1/2"
+                          : "bottom-0 left-0 w-full h-1/2"
+                      : `${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 ${pipEnlarged ? "scale-[2.5]" : "scale-100"}`
                 }`}
               >
                 {webrtc.localStream ? (
@@ -717,7 +724,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     Loading...
                   </div>
                 )}
-                {pipEnlarged && !pipPinned && (
+                {!compactVideo && pipEnlarged && !pipPinned && (
                   <button
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => setPipPinned(true)}
@@ -727,7 +734,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     📌
                   </button>
                 )}
-                {pipPinned && (
+                {!compactVideo && pipPinned && (
                   <button
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => setPipPinned(false)}
@@ -884,31 +891,40 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
           </div>
         </div>
 
-        {showChat && mode === "video" && (
-          <div className={`w-full lg:w-80 ${gameType ? "h-40" : "h-64"} lg:h-auto border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 flex flex-col min-h-0`}>
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-300 dark:border-zinc-700">
-              <span className="text-zinc-900 dark:text-white font-medium text-sm">Chat</span>
-              <button onClick={() => setShowChat(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-lg">
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 min-h-0">
-              <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} onFeedback={handleFeedback} incomingFeedback={incomingFeedback} />
-            </div>
-          </div>
-        )}
-
-        {mode === "video" && gameType && (
-          <div className={`w-full lg:w-80 ${gameType === "tic-tac-toe" ? "h-[58%]" : "h-[45%]"} lg:h-auto border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 flex flex-col min-h-0`}>
-            <GamePanel
-              key={gameKey}
-              gameType={gameType}
-              isHost={isGameHost}
-              gameState={gameState}
-              onLocalState={handleGameLocalState}
-              onGameEnd={handleGameEnd}
-              onGameOver={handleGameOver}
-            />
+        {mode === "video" && (showChat || gameType) && (
+          <div className={`w-full lg:w-96 lg:h-auto flex flex-col min-h-0 border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 ${
+            !gameType
+              ? "h-64"
+              : showChat
+                ? gameType === "tic-tac-toe" ? "h-[calc(58%+10rem)]" : "h-[calc(45%+10rem)]"
+                : gameType === "tic-tac-toe" ? "h-[58%]" : "h-[45%]"
+          }`}>
+            {gameType && (
+              <div className={`flex-1 min-h-0 lg:flex-[5] ${showChat ? "border-b border-zinc-300 dark:border-zinc-700" : ""}`}>
+                <GamePanel
+                  key={gameKey}
+                  gameType={gameType}
+                  isHost={isGameHost}
+                  gameState={gameState}
+                  onLocalState={handleGameLocalState}
+                  onGameEnd={handleGameEnd}
+                  onGameOver={handleGameOver}
+                />
+              </div>
+            )}
+            {showChat && (
+              <div className={`${gameType ? "h-40 lg:h-auto lg:flex-[3]" : "h-full"} flex flex-col min-h-0`}>
+                <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-300 dark:border-zinc-700 shrink-0">
+                  <span className="text-zinc-900 dark:text-white font-medium text-sm">Chat</span>
+                  <button onClick={() => setShowChat(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-lg">
+                    ✕
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0">
+                  <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} onFeedback={handleFeedback} incomingFeedback={incomingFeedback} />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

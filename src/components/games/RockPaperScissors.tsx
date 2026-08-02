@@ -143,12 +143,12 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
   return (
     <>
     <div className="flex flex-col items-center gap-3">
-      <div className="text-white text-lg font-bold drop-shadow-lg">
+      <div className="text-zinc-900 dark:text-white text-lg font-bold drop-shadow-lg">
         Round {showResult ? currentRound : currentRound + 1} — You: {myScore} | Them: {oppScore}
       </div>
 
       {!showResult && !matchOver && (
-        <div className={`text-3xl font-bold ${timeLeft <= 5 ? "text-red-400" : "text-white"}`}>
+        <div className={`text-3xl font-bold ${timeLeft <= 5 ? "text-red-500 dark:text-red-400" : "text-zinc-900 dark:text-white"}`}>
           {timeLeft}s
         </div>
       )}
@@ -163,10 +163,10 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
                 key={c.value}
                 onClick={() => handleChoice(c.value)}
                 disabled={isDisabled}
-                className={`w-20 h-20 sm:w-24 sm:h-24 rounded-xl backdrop-blur-sm flex flex-col items-center justify-center text-3xl sm:text-4xl transition-all ${isSelected ? "bg-white/40 ring-2 ring-white scale-110" : isDisabled ? "bg-white/5 opacity-40" : "bg-white/20 hover:bg-white/30 hover:scale-110 cursor-pointer" }`}
+                className={`w-20 h-20 sm:w-24 sm:h-24 rounded-xl backdrop-blur-sm flex flex-col items-center justify-center text-3xl sm:text-4xl transition-all ${isSelected ? "bg-zinc-900/20 dark:bg-white/40 ring-2 ring-zinc-400 dark:ring-white scale-110" : isDisabled ? "bg-zinc-200/60 dark:bg-white/5 opacity-40" : "bg-zinc-200 hover:bg-zinc-300 dark:bg-white/20 dark:hover:bg-white/30 hover:scale-110 cursor-pointer" }`}
               >
                 <span>{c.emoji}</span>
-                <span className="text-xs text-white mt-1">{c.label}</span>
+                <span className="text-xs text-zinc-700 dark:text-white/70 mt-1">{c.label}</span>
               </button>
             );
           })}
@@ -174,19 +174,19 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
       )}
 
       {!showResult && !matchOver && myChoice && timeLeft > 0 && (
-        <div className="text-white/70 text-sm animate-pulse">Waiting for opponent...</div>
+        <div className="text-zinc-600 dark:text-white/70 text-sm animate-pulse">Waiting for opponent...</div>
       )}
 
       {showResult && lastRound && (
         <div className="flex flex-col items-center gap-3">
           <div className="flex gap-8 items-center">
             <div className="flex flex-col items-center">
-              <span className="text-xs text-white/70">You</span>
+              <span className="text-xs text-zinc-600 dark:text-white/70">You</span>
               <span className="text-5xl">{lastRound.myChoice ? choiceEmoji[lastRound.myChoice] : "⏳"}</span>
             </div>
-            <span className="text-2xl font-bold text-white">VS</span>
+            <span className="text-2xl font-bold text-zinc-900 dark:text-white">VS</span>
             <div className="flex flex-col items-center">
-              <span className="text-xs text-white/70">Them</span>
+              <span className="text-xs text-zinc-600 dark:text-white/70">Them</span>
               <span className="text-5xl">{lastRound.oppChoice ? choiceEmoji[lastRound.oppChoice] : "⏳"}</span>
             </div>
           </div>
@@ -198,13 +198,13 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
               {!myPlayAgain && !oppPlayAgainRequest && (
                 <button
                   onClick={handlePlayAgain}
-                  className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg backdrop-blur-sm text-sm transition-colors"
+                  className="px-4 py-2 bg-zinc-200 hover:bg-zinc-300 dark:bg-white/20 dark:hover:bg-white/30 text-zinc-900 dark:text-white rounded-lg backdrop-blur-sm text-sm transition-colors"
                 >
                   Ready
                 </button>
               )}
               {myPlayAgain && !oppPlayAgainRequest && (
-                <div className="text-white/70 text-sm animate-pulse">Waiting for partner...</div>
+                <div className="text-zinc-600 dark:text-white/70 text-sm animate-pulse">Waiting for partner...</div>
               )}
               {!myPlayAgain && oppPlayAgainRequest && (
                 <button
@@ -218,7 +218,7 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
           )}
           {matchOver && (
             <>
-              <div className="text-xl font-bold text-white flex items-center gap-2">
+              <div className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                 <span className={myScore >= 3 ? "animate-win-emoji" : "animate-lose-emoji"}>
                   {myScore >= 3 ? "🥳" : "😭"}
                 </span>
@@ -227,13 +227,13 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
               {!myPlayAgain && !oppPlayAgainRequest && (
                 <button
                   onClick={handlePlayAgain}
-                  className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg backdrop-blur-sm text-sm transition-colors"
+                  className="px-4 py-2 bg-zinc-200 hover:bg-zinc-300 dark:bg-white/20 dark:hover:bg-white/30 text-zinc-900 dark:text-white rounded-lg backdrop-blur-sm text-sm transition-colors"
                 >
                   Play Again
                 </button>
               )}
               {myPlayAgain && !oppPlayAgainRequest && (
-                <div className="text-white/70 text-sm animate-pulse">Waiting for partner...</div>
+                <div className="text-zinc-600 dark:text-white/70 text-sm animate-pulse">Waiting for partner...</div>
               )}
               {!myPlayAgain && oppPlayAgainRequest && (
                 <button
