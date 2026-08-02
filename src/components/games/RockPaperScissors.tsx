@@ -47,7 +47,6 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
   const onStateChangeRef = useRef(onStateChange);
   onStateChangeRef.current = onStateChange;
 
-  const currentRound = rounds.length;
   const opponentChoice = (gameState.choice as Choice) ?? null;
   const oppPlayAgainRequest = gameState.playAgainRequest === true;
 
@@ -144,7 +143,7 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
     <>
     <div className="flex flex-col items-center gap-3">
       <div className="text-zinc-900 dark:text-white text-lg font-bold drop-shadow-lg">
-        Round {showResult ? currentRound : currentRound + 1} — You: {myScore} | Them: {oppScore}
+        You: {myScore} | Them: {oppScore}
       </div>
 
       {!showResult && !matchOver && (
@@ -180,15 +179,9 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
       {showResult && lastRound && (
         <div className="flex flex-col items-center gap-3">
           <div className="flex gap-8 items-center">
-            <div className="flex flex-col items-center">
-              <span className="text-xs text-zinc-600 dark:text-white/70">You</span>
-              <span className="text-5xl">{lastRound.myChoice ? choiceEmoji[lastRound.myChoice] : "⏳"}</span>
-            </div>
+            <span className="text-5xl">{lastRound.myChoice ? choiceEmoji[lastRound.myChoice] : "⏳"}</span>
             <span className="text-2xl font-bold text-zinc-900 dark:text-white">VS</span>
-            <div className="flex flex-col items-center">
-              <span className="text-xs text-zinc-600 dark:text-white/70">Them</span>
-              <span className="text-5xl">{lastRound.oppChoice ? choiceEmoji[lastRound.oppChoice] : "⏳"}</span>
-            </div>
+            <span className="text-5xl">{lastRound.oppChoice ? choiceEmoji[lastRound.oppChoice] : "⏳"}</span>
           </div>
           <div className={`text-2xl font-bold ${ lastRound.result === "win" ? "text-green-400" : lastRound.result === "lose" ? "text-red-400" : "text-yellow-400" }`}>
             {lastRound.result === "win" ? "You Win!" : lastRound.result === "lose" ? "You Lose!" : "Draw!"}
@@ -218,11 +211,10 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
           )}
           {matchOver && (
             <>
-              <div className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+              <div className="text-4xl">
                 <span className={myScore >= 3 ? "animate-win-emoji" : "animate-lose-emoji"}>
                   {myScore >= 3 ? "🥳" : "😭"}
                 </span>
-                {myScore >= 3 ? "You won the match!" : "You lost the match!"}
               </div>
               {!myPlayAgain && !oppPlayAgainRequest && (
                 <button
