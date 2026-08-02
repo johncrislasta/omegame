@@ -5,6 +5,7 @@ import { useState, useRef, KeyboardEvent } from "react";
 import { useSocket } from "@/hooks/useSocket";
 import { countryFlagUrl } from "@/lib/countryFlag";
 import SupportModal from "@/components/SupportModal";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Home() {
   const [mounted] = useState(true);
@@ -45,16 +46,17 @@ export default function Home() {
   const interestsParam = interests.join(",");
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 flex flex-col items-center justify-center p-6">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div
-        className={`text-center transition-all duration-700 w-full max-w-xl ${
-          mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-        }`}
+        className={`text-center transition-all duration-700 w-full max-w-xl ${ mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8" }`}
       >
-        <h1 className="text-6xl sm:text-8xl font-bold text-white mb-2 tracking-tight">
-          Ome<span className="text-mint">Game</span>
+        <h1 className="text-6xl sm:text-8xl font-bold text-zinc-900 dark:text-white mb-2 tracking-tight">
+          Ome<span className="text-mint-ink dark:text-mint">Game</span>
         </h1>
-        <p className="text-zinc-400 text-lg sm:text-xl mb-4 max-w-md mx-auto">
+        <p className="text-zinc-600 dark:text-zinc-400 text-lg sm:text-xl mb-4 max-w-md mx-auto">
           Meet strangers. Play games. Have fun.
         </p>
 
@@ -95,7 +97,7 @@ export default function Home() {
                       inputRef.current?.focus();
                     }
                   }}
-                  className="px-2.5 py-0.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-500 text-zinc-300 text-[11px] rounded-full transition-colors"
+                  className="px-2.5 py-0.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 border border-zinc-300 dark:border-zinc-700 hover:border-zinc-500 text-zinc-700 dark:text-zinc-300 text-[11px] rounded-full transition-colors"
                 >
                   {interest} <span className="text-zinc-500">{count}</span>
                 </button>
@@ -105,16 +107,16 @@ export default function Home() {
         )}
 
         <div className="mb-6">
-          <div className="flex flex-wrap items-center gap-2 p-3 bg-zinc-900 border border-zinc-700 rounded-xl mb-3 min-h-[52px]">
+          <div className="flex flex-wrap items-center gap-2 p-3 bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl mb-3 min-h-[52px]">
             {interests.map((interest, i) => (
               <span
                 key={interest}
-                className="inline-flex items-center gap-1 px-3 py-1 bg-mint/20 text-mint text-sm rounded-full"
+                className="inline-flex items-center gap-1 px-3 py-1 bg-mint/20 text-mint-ink dark:text-mint text-sm rounded-full"
               >
                 {interest}
                 <button
                   onClick={() => removeInterest(i)}
-                  className="hover:text-white transition-colors text-mint/60"
+                  className="hover:text-zinc-900 dark:hover:text-white transition-colors text-mint-ink/60 dark:text-mint/60"
                 >
                   ✕
                 </button>
@@ -128,7 +130,7 @@ export default function Home() {
               onKeyDown={handleKeyDown}
               onBlur={handleBlur}
               placeholder={interests.length === 0 ? "Add interests (e.g. music, gaming, coding)..." : "Add more..."}
-              className="flex-1 min-w-[120px] bg-transparent text-white placeholder-zinc-500 outline-none text-sm"
+              className="flex-1 min-w-[120px] bg-transparent text-zinc-900 dark:text-white placeholder-zinc-500 outline-none text-sm"
             />
           </div>
           <p className="text-zinc-500 text-xs text-left">Press Enter or comma to add. Click ✕ to remove.</p>
@@ -149,13 +151,13 @@ export default function Home() {
           </Link>
           <Link
             href={`/chat?mode=text${interestsParam ? `&interests=${encodeURIComponent(interestsParam)}` : ""}`}
-            className="inline-flex items-center gap-3 px-8 py-4 bg-zinc-800 hover:bg-zinc-700 text-white text-lg font-semibold rounded-full border border-zinc-600 hover:border-zinc-500 transition-all hover:scale-105"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white text-lg font-semibold rounded-full border border-zinc-400 dark:border-zinc-600 hover:border-zinc-500 transition-all hover:scale-105"
           >
             <span className="text-2xl">💬</span>
             <div className="flex flex-col items-start">
               <span>Text Chat</span>
               {onlineCount.text > 0 && (
-                <span className="text-zinc-400 text-xs font-normal leading-tight">{onlineCount.text} online</span>
+                <span className="text-zinc-600 dark:text-zinc-400 text-xs font-normal leading-tight">{onlineCount.text} online</span>
               )}
             </div>
           </Link>
@@ -170,9 +172,7 @@ export default function Home() {
           ].map((item, i) => (
             <div
               key={item.label}
-              className={`flex flex-col items-center gap-2 transition-all duration-500 ${
-                mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-              }`}
+              className={`flex flex-col items-center gap-2 transition-all duration-500 ${ mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4" }`}
               style={{ transitionDelay: `${200 + i * 100}ms` }}
             >
               <span className="text-3xl">{item.emoji}</span>
@@ -184,7 +184,7 @@ export default function Home() {
         <div className="mt-8">
           <button
             onClick={() => setShowSupport(true)}
-            className="text-zinc-600 hover:text-zinc-400 text-xs transition-colors"
+            className="text-zinc-500 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 text-xs transition-colors"
           >
             &hearts; Support OmeGame
           </button>

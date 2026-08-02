@@ -120,10 +120,7 @@ export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTa
             key={i}
             onClick={() => handleCellClick(i)}
             disabled={!isMyTurn || cell !== null || roundOver}
-            className={`w-20 h-20 sm:w-24 sm:h-24 rounded-lg text-3xl sm:text-4xl font-bold flex items-center justify-center
-              ${cell === "X" ? "bg-blue-500/80 text-white" : cell === "O" ? "bg-red-500/80 text-white" : "bg-white/20 hover:bg-white/30 text-white"}
-              ${isMyTurn && !cell && !roundOver ? "cursor-pointer active:scale-95" : "cursor-default"}
-              transition-all duration-150 backdrop-blur-sm`}
+            className={`w-20 h-20 sm:w-24 sm:h-24 rounded-lg text-3xl sm:text-4xl font-bold flex items-center justify-center ${cell === "X" ? "bg-blue-500/80 text-white" : cell === "O" ? "bg-red-500/80 text-white" : "bg-white/20 hover:bg-white/30 text-white"} ${isMyTurn && !cell && !roundOver ? "cursor-pointer active:scale-95" : "cursor-default"} transition-all duration-150 backdrop-blur-sm`}
           >
             {cell}
           </button>
