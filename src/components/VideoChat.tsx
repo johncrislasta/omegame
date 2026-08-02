@@ -5,7 +5,7 @@ import { useSocket } from "@/hooks/useSocket";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useCountry } from "@/hooks/useCountry";
 import GameMenu from "./GameMenu";
-import GameOverlay from "./GameOverlay";
+import GamePanel from "./GamePanel";
 import ChatBox from "./ChatBox";
 import type { ChatMessage, GameType } from "@/lib/types";
 import { countryFlagUrl } from "@/lib/countryFlag";
@@ -738,21 +738,9 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                   </button>
                 )}
               </div>
-
-              {gameType && (
-                <GameOverlay
-                  key={gameKey}
-                  gameType={gameType}
-                  isHost={isGameHost}
-                  gameState={gameState}
-                  onLocalState={handleGameLocalState}
-                  onGameEnd={handleGameEnd}
-                  onGameOver={handleGameOver}
-                />
-              )}
             </div>
           ) : (
-            <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 flex flex-col lg:flex-row min-h-0">
               <div className="flex-1 flex flex-col items-center justify-center p-0 sm:p-8 min-h-0 relative">
             {status === "waiting" && (
               <div className="text-center">
@@ -833,9 +821,10 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     </div>
                   </div>
                 )}
-
-                {gameType && (
-                  <GameOverlay
+              </div>
+              {gameType && (
+                <div className={`w-full lg:w-80 ${gameType === "tic-tac-toe" ? "h-[58%]" : "h-[45%]"} lg:h-auto border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 flex flex-col min-h-0`}>
+                  <GamePanel
                     key={gameKey}
                     gameType={gameType}
                     isHost={isGameHost}
@@ -844,8 +833,8 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     onGameEnd={handleGameEnd}
                     onGameOver={handleGameOver}
                   />
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -896,7 +885,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
         </div>
 
         {showChat && mode === "video" && (
-          <div className="w-full lg:w-80 h-64 lg:h-auto border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 flex flex-col">
+          <div className={`w-full lg:w-80 ${gameType ? "h-40" : "h-64"} lg:h-auto border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 flex flex-col min-h-0`}>
             <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-300 dark:border-zinc-700">
               <span className="text-zinc-900 dark:text-white font-medium text-sm">Chat</span>
               <button onClick={() => setShowChat(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-lg">
@@ -906,6 +895,20 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
             <div className="flex-1 min-h-0">
               <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} onFeedback={handleFeedback} incomingFeedback={incomingFeedback} />
             </div>
+          </div>
+        )}
+
+        {mode === "video" && gameType && (
+          <div className={`w-full lg:w-80 ${gameType === "tic-tac-toe" ? "h-[58%]" : "h-[45%]"} lg:h-auto border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 flex flex-col min-h-0`}>
+            <GamePanel
+              key={gameKey}
+              gameType={gameType}
+              isHost={isGameHost}
+              gameState={gameState}
+              onLocalState={handleGameLocalState}
+              onGameEnd={handleGameEnd}
+              onGameOver={handleGameOver}
+            />
           </div>
         )}
       </div>

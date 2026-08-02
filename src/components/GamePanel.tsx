@@ -4,7 +4,7 @@ import TicTacToe from "./games/TicTacToe";
 import RockPaperScissors from "./games/RockPaperScissors";
 import type { GameType } from "@/lib/types";
 
-interface GameOverlayProps {
+interface GamePanelProps {
   gameType: GameType;
   isHost: boolean;
   gameState: Record<string, unknown>;
@@ -13,18 +13,24 @@ interface GameOverlayProps {
   onGameOver: () => void;
 }
 
-export default function GameOverlay({ gameType, isHost, gameState, onLocalState, onGameEnd, onGameOver }: GameOverlayProps) {
+export default function GamePanel({ gameType, isHost, gameState, onLocalState, onGameEnd, onGameOver }: GamePanelProps) {
   if (!gameType) return null;
 
   return (
-    <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 w-[calc(100%-2rem)] max-w-sm">
-      <div className="bg-black/70 backdrop-blur-md rounded-2xl p-4 border border-white/10 shadow-2xl relative">
+    <div className="w-full h-full flex flex-col min-h-0 bg-zinc-900">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-700 shrink-0">
+        <span className="text-white font-medium text-sm">
+          🎮 {gameType === "tic-tac-toe" ? "Tic Tac Toe" : "Rock Paper Scissors"}
+        </span>
         <button
           onClick={onGameEnd}
-          className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white text-sm transition-colors"
+          className="text-zinc-400 hover:text-white text-lg"
+          title="Close game"
         >
           ✕
         </button>
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center p-3">
         {gameType === "tic-tac-toe" && (
           <TicTacToe
             isPlayerX={isHost}
