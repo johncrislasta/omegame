@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import VideoChat from "@/components/VideoChat";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useSocket } from "@/hooks/useSocket";
 
 function ChatContent() {
@@ -20,27 +21,38 @@ function ChatContent() {
 
   return (
     <div className="h-screen flex flex-col">
-      <header className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-800">
-        <Link href="/" className="flex items-center gap-2 text-xl font-bold text-white">
+      <header className="flex items-center justify-between px-4 py-3 bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
+        <Link href="/" className="flex items-center gap-2 text-xl font-bold text-zinc-900 dark:text-white">
           <img src="/logo.png" alt="OmeGame" className="w-6 h-6" />
-          <span>Ome<span className="text-mint">Game</span></span>
+          <span>Ome<span className="text-mint-ink dark:text-mint">Game</span></span>
         </Link>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-zinc-400 text-sm">
+          <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400 text-sm">
             <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            {mode === "video" ? onlineCount.video : onlineCount.text} online
+            <span>{mode === "video" ? onlineCount.video : onlineCount.text}</span>
+            <span className="hidden sm:inline">online</span>
           </div>
+          <ThemeToggle />
           <div className="relative">
             <select
               value={mode}
               onChange={(e) => switchMode(e.target.value)}
-              className="appearance-none bg-zinc-800 text-white text-sm px-3 py-1.5 pr-8 rounded-lg border border-zinc-700 hover:border-zinc-500 focus:border-mint focus:outline-none cursor-pointer transition-colors"
+              aria-label="Switch chat mode"
+              className="sm:hidden appearance-none bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm px-2 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 focus:border-mint focus:outline-none cursor-pointer transition-colors"
+            >
+              <option value="video">🎥</option>
+              <option value="text">💬</option>
+            </select>
+            <select
+              value={mode}
+              onChange={(e) => switchMode(e.target.value)}
+              className="hidden sm:block appearance-none bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm px-3 py-1.5 pr-8 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:border-zinc-500 focus:border-mint focus:outline-none cursor-pointer transition-colors"
             >
               <option value="video">🎥 Video Chat</option>
               <option value="text">💬 Text Chat</option>
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-              <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="pointer-events-none absolute inset-y-0 right-0 hidden sm:flex items-center pr-2">
+              <svg className="w-4 h-4 text-zinc-600 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </div>
@@ -55,7 +67,7 @@ function ChatContent() {
 export default function ChatPage() {
   return (
     <Suspense fallback={
-      <div className="h-screen flex items-center justify-center bg-zinc-950 text-zinc-400">
+      <div className="h-screen flex items-center justify-center bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400">
         Loading...
       </div>
     }>

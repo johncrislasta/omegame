@@ -566,7 +566,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
   }, [status, searchStartTime, localInterests]);
 
   return (
-    <div className="flex-1 flex flex-col bg-zinc-950 min-h-0">
+    <div className="flex-1 flex flex-col bg-white dark:bg-zinc-950 min-h-0">
       {!isConnected && (
         <div className="bg-yellow-900/50 text-yellow-200 text-center py-2 px-4 text-sm">
           Connecting to server...
@@ -582,17 +582,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
         <div className="flex-1 flex flex-col min-h-0">
           {mode === "video" ? (
             <div ref={videoContainerRef} className="flex-1 relative min-h-0">
-              <div className={`absolute bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${
-                pipPinned
-                  ? containerLandscape
-                    ? snapCorner.endsWith("left")
-                      ? "top-0 bottom-0 left-1/2 right-0"
-                      : "top-0 bottom-0 left-0 right-1/2"
-                    : snapCorner.startsWith("top")
-                      ? "top-1/2 bottom-0 left-0 right-0"
-                      : "top-0 bottom-1/2 left-0 right-0"
-                  : "inset-0"
-              }`}>
+              <div className={`absolute bg-zinc-100 dark:bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${ pipPinned ? containerLandscape ? snapCorner.endsWith("left") ? "top-0 bottom-0 left-1/2 right-0" : "top-0 bottom-0 left-0 right-1/2" : snapCorner.startsWith("top") ? "top-1/2 bottom-0 left-0 right-0" : "top-0 bottom-1/2 left-0 right-0" : "inset-0" }`}>
                 {webrtc.remoteStream ? (
                   <>
                   <video
@@ -619,7 +609,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     {status === "waiting" && (
                       <div className="text-center">
                         <div className="text-4xl mb-4 animate-spin">🔍</div>
-                        <div className="text-zinc-400 text-lg">
+                        <div className="text-zinc-600 dark:text-zinc-400 text-lg">
                           {localInterests.length > 0
                             ? searchPhase === "exact"
                               ? `Looking for someone interested in ${localInterests.join(", ")}...`
@@ -628,25 +618,25 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                                 : "Looking for someone..."
                             : "Looking for someone..."}
                         </div>
-                        <div className="text-zinc-600 text-sm mt-2">This may take a moment</div>
+                        <div className="text-zinc-500 dark:text-zinc-600 text-sm mt-2">This may take a moment</div>
                       </div>
                     )}
                     {status === "connecting" && (
                       <div className="text-center">
                         <div className="text-4xl mb-4 animate-pulse">⚡</div>
-                        <div className="text-zinc-400 text-lg">Connecting...</div>
+                        <div className="text-zinc-600 dark:text-zinc-400 text-lg">Connecting...</div>
                       </div>
                     )}
                     {status === "idle" && (
                       <div className="flex flex-col items-center gap-4 px-4 max-w-md mx-auto w-full">
                         <div className="text-6xl">🎯</div>
-                        <div className="text-zinc-400 text-lg">Ready to meet someone?</div>
+                        <div className="text-zinc-600 dark:text-zinc-400 text-lg">Ready to meet someone?</div>
                         <div className="w-full">
-                          <div className="flex flex-wrap items-center gap-2 p-2.5 bg-zinc-900 border border-zinc-700 rounded-lg mb-2 min-h-[44px]">
+                          <div className="flex flex-wrap items-center gap-2 p-2.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg mb-2 min-h-[44px]">
                             {localInterests.map((interest, i) => (
-                              <span key={interest} className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-mint/20 text-mint text-xs rounded-full">
+                              <span key={interest} className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-mint/20 text-mint-ink dark:text-mint text-xs rounded-full">
                                 {interest}
-                                <button onClick={() => removeLocalInterest(i)} className="hover:text-white transition-colors text-mint/60">✕</button>
+                                <button onClick={() => removeLocalInterest(i)} className="hover:text-zinc-900 dark:hover:text-white transition-colors text-mint-ink/60 dark:text-mint/60">✕</button>
                               </span>
                             ))}
                             <input
@@ -657,7 +647,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                               onKeyDown={handleInterestKeyDown}
                               onBlur={handleInterestBlur}
                               placeholder={localInterests.length === 0 ? "Add interests..." : "Add more..."}
-                              className="flex-1 min-w-[100px] bg-transparent text-white placeholder-zinc-500 outline-none text-xs"
+                              className="flex-1 min-w-[100px] bg-transparent text-zinc-900 dark:text-white placeholder-zinc-500 outline-none text-xs"
                             />
                           </div>
                           {onlineCount.topInterests && onlineCount.topInterests.length > 0 && (
@@ -672,7 +662,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                                       interestInputRef.current?.focus();
                                     }
                                   }}
-                                  className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-500 text-zinc-300 text-[10px] rounded-full transition-colors"
+                                  className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 border border-zinc-300 dark:border-zinc-700 hover:border-zinc-500 text-zinc-700 dark:text-zinc-300 text-[10px] rounded-full transition-colors"
                                 >
                                   {interest} <span className="text-zinc-500">{count}</span>
                                 </button>
@@ -685,7 +675,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     {status === "disconnected" && (
                       <div className="text-center">
                         <div className="text-4xl mb-4">👋</div>
-                        <div className="text-zinc-400 text-lg">Stranger has left</div>
+                        <div className="text-zinc-600 dark:text-zinc-400 text-lg">Stranger has left</div>
                       </div>
                     )}
                   </div>
@@ -723,7 +713,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     style={{ transform: "scaleX(-1)" }}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">
+                  <div className="w-full h-full flex items-center justify-center text-zinc-500 dark:text-zinc-600 text-xs">
                     Loading...
                   </div>
                 )}
@@ -767,7 +757,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
             {status === "waiting" && (
               <div className="text-center">
                 <div className="text-4xl mb-4 animate-spin">🔍</div>
-                <div className="text-zinc-400 text-lg">
+                <div className="text-zinc-600 dark:text-zinc-400 text-lg">
                   {localInterests.length > 0
                     ? searchPhase === "exact"
                       ? `Looking for someone interested in ${localInterests.join(", ")}...`
@@ -776,25 +766,25 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                         : "Looking for someone..."
                     : "Looking for someone..."}
                 </div>
-                <div className="text-zinc-600 text-sm mt-2">This may take a moment</div>
+                <div className="text-zinc-500 dark:text-zinc-600 text-sm mt-2">This may take a moment</div>
               </div>
             )}
             {status === "connecting" && (
               <div className="text-center">
                 <div className="text-4xl mb-4 animate-pulse">⚡</div>
-                <div className="text-zinc-400 text-lg">Connecting...</div>
+                <div className="text-zinc-600 dark:text-zinc-400 text-lg">Connecting...</div>
               </div>
             )}
             {status === "idle" && (
               <div className="flex flex-col items-center gap-4 px-4 max-w-md mx-auto w-full">
                 <div className="text-6xl">💬</div>
-                <div className="text-zinc-400 text-lg">Ready to chat with someone?</div>
+                <div className="text-zinc-600 dark:text-zinc-400 text-lg">Ready to chat with someone?</div>
                 <div className="w-full">
-                  <div className="flex flex-wrap items-center gap-2 p-2.5 bg-zinc-900 border border-zinc-700 rounded-lg mb-2 min-h-[44px]">
+                  <div className="flex flex-wrap items-center gap-2 p-2.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg mb-2 min-h-[44px]">
                     {localInterests.map((interest, i) => (
-                      <span key={interest} className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-mint/20 text-mint text-xs rounded-full">
+                      <span key={interest} className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-mint/20 text-mint-ink dark:text-mint text-xs rounded-full">
                         {interest}
-                        <button onClick={() => removeLocalInterest(i)} className="hover:text-white transition-colors text-mint/60">✕</button>
+                        <button onClick={() => removeLocalInterest(i)} className="hover:text-zinc-900 dark:hover:text-white transition-colors text-mint-ink/60 dark:text-mint/60">✕</button>
                       </span>
                     ))}
                     <input
@@ -805,7 +795,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                       onKeyDown={handleInterestKeyDown}
                       onBlur={handleInterestBlur}
                       placeholder={localInterests.length === 0 ? "Add interests..." : "Add more..."}
-                      className="flex-1 min-w-[100px] bg-transparent text-white placeholder-zinc-500 outline-none text-xs"
+                      className="flex-1 min-w-[100px] bg-transparent text-zinc-900 dark:text-white placeholder-zinc-500 outline-none text-xs"
                     />
                   </div>
                   {onlineCount.topInterests && onlineCount.topInterests.length > 0 && (
@@ -820,7 +810,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                               interestInputRef.current?.focus();
                             }
                           }}
-                          className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-500 text-zinc-300 text-[10px] rounded-full transition-colors"
+                          className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 border border-zinc-300 dark:border-zinc-700 hover:border-zinc-500 text-zinc-700 dark:text-zinc-300 text-[10px] rounded-full transition-colors"
                         >
                           {interest} <span className="text-zinc-500">{count}</span>
                         </button>
@@ -833,7 +823,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
             {status === "disconnected" && (
               <div className="text-center">
                 <div className="text-4xl mb-4">👋</div>
-                <div className="text-zinc-400 text-lg">Stranger has left</div>
+                <div className="text-zinc-600 dark:text-zinc-400 text-lg">Stranger has left</div>
               </div>
             )}
             {status === "connected" && (
@@ -859,7 +849,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
             </div>
           )}
 
-          <div className="flex items-center justify-center gap-3 p-3 bg-zinc-900/50">
+          <div className="flex items-center justify-center gap-3 p-3 bg-zinc-100/50 dark:bg-zinc-900/50">
             {status === "idle" || status === "disconnected" ? (
               <button
                 onClick={handleFindStranger}
@@ -878,7 +868,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
               <>
                 <button
                   onClick={handleSkip}
-                  className="px-5 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-full font-medium transition-colors flex items-center gap-2"
+                  className="px-5 py-2 bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600 text-zinc-900 dark:text-white rounded-full font-medium transition-colors flex items-center gap-2"
                 >
                   <span>⏭</span> Skip
                 </button>
@@ -888,9 +878,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     {mode === "video" && (
                       <button
                         onClick={() => setShowChat(!showChat)}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 relative ${
-                          showChat ? "bg-blue-600 text-white" : "bg-zinc-700 hover:bg-zinc-600 text-white"
-                        }`}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 relative ${ showChat ? "bg-blue-600 text-white" : "bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600 text-zinc-900 dark:text-white" }`}
                       >
                         💬 Chat
                         {!showChat && unreadCount > 0 && (
@@ -908,10 +896,10 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
         </div>
 
         {showChat && mode === "video" && (
-          <div className="w-full lg:w-80 h-64 lg:h-auto border-t lg:border-t-0 lg:border-l border-zinc-700 bg-zinc-900 flex flex-col">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-700">
-              <span className="text-white font-medium text-sm">Chat</span>
-              <button onClick={() => setShowChat(false)} className="text-zinc-400 hover:text-white text-lg">
+          <div className="w-full lg:w-80 h-64 lg:h-auto border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 flex flex-col">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-300 dark:border-zinc-700">
+              <span className="text-zinc-900 dark:text-white font-medium text-sm">Chat</span>
+              <button onClick={() => setShowChat(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-lg">
                 ✕
               </button>
             </div>
@@ -924,19 +912,19 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
 
       {pendingInvite && !isGameHost && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-700 text-center">
+          <div className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-300 dark:border-zinc-700 text-center">
             <div className="text-4xl mb-3">🎮</div>
-            <h3 className="text-white text-lg font-bold mb-2">Game Invitation</h3>
-            <p className="text-zinc-400 mb-4">
+            <h3 className="text-zinc-900 dark:text-white text-lg font-bold mb-2">Game Invitation</h3>
+            <p className="text-zinc-600 dark:text-zinc-400 mb-4">
               Your partner wants to play{" "}
-              <span className="text-white font-semibold">
+              <span className="text-zinc-900 dark:text-white font-semibold">
                 {pendingInvite.gameType === "tic-tac-toe" ? "Tic Tac Toe" : "Rock Paper Scissors"}
               </span>
             </p>
             <div className="flex gap-3">
               <button
                 onClick={handleRejectGame}
-                className="flex-1 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors"
+                className="flex-1 py-2 bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600 text-zinc-900 dark:text-white rounded-lg transition-colors"
               >
                 Decline
               </button>
@@ -953,18 +941,18 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
 
       {pendingInvite && isGameHost && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-700 text-center">
+          <div className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-300 dark:border-zinc-700 text-center">
             <div className="text-4xl mb-3 animate-bounce">🎮</div>
-            <h3 className="text-white text-lg font-bold mb-2">Waiting for response...</h3>
-            <p className="text-zinc-400 mb-4">
+            <h3 className="text-zinc-900 dark:text-white text-lg font-bold mb-2">Waiting for response...</h3>
+            <p className="text-zinc-600 dark:text-zinc-400 mb-4">
               Waiting for partner to accept{" "}
-              <span className="text-white font-semibold">
+              <span className="text-zinc-900 dark:text-white font-semibold">
                 {pendingInvite.gameType === "tic-tac-toe" ? "Tic Tac Toe" : "Rock Paper Scissors"}
               </span>
             </p>
             <button
               onClick={handleRejectGame}
-              className="py-2 px-6 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors"
+              className="py-2 px-6 bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600 text-zinc-900 dark:text-white rounded-lg transition-colors"
             >
               Cancel
             </button>
@@ -974,13 +962,13 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
 
       {gameOver && gameType && pendingPlayAgain && !partnerPendingPlayAgain && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-700 text-center">
+          <div className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-300 dark:border-zinc-700 text-center">
             <div className="text-4xl mb-3 animate-bounce">🔄</div>
-            <h3 className="text-white text-lg font-bold mb-2">Waiting for response...</h3>
-            <p className="text-zinc-400 mb-4">Waiting for partner to decide</p>
+            <h3 className="text-zinc-900 dark:text-white text-lg font-bold mb-2">Waiting for response...</h3>
+            <p className="text-zinc-600 dark:text-zinc-400 mb-4">Waiting for partner to decide</p>
             <button
               onClick={handleRejectPlayAgain}
-              className="py-2 px-6 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors"
+              className="py-2 px-6 bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600 text-zinc-900 dark:text-white rounded-lg transition-colors"
             >
               Cancel
             </button>
@@ -990,14 +978,14 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
 
       {gameOver && gameType && partnerPendingPlayAgain && !pendingPlayAgain && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-700 text-center">
+          <div className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-300 dark:border-zinc-700 text-center">
             <div className="text-4xl mb-3">🔄</div>
-            <h3 className="text-white text-lg font-bold mb-2">Play Again?</h3>
-            <p className="text-zinc-400 mb-4">Your partner wants to play again</p>
+            <h3 className="text-zinc-900 dark:text-white text-lg font-bold mb-2">Play Again?</h3>
+            <p className="text-zinc-600 dark:text-zinc-400 mb-4">Your partner wants to play again</p>
             <div className="flex gap-3">
               <button
                 onClick={handleRejectPlayAgain}
-                className="flex-1 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors"
+                className="flex-1 py-2 bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600 text-zinc-900 dark:text-white rounded-lg transition-colors"
               >
                 Leave
               </button>

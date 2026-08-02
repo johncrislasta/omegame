@@ -163,14 +163,7 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
                 key={c.value}
                 onClick={() => handleChoice(c.value)}
                 disabled={isDisabled}
-                className={`w-20 h-20 sm:w-24 sm:h-24 rounded-xl backdrop-blur-sm
-                  flex flex-col items-center justify-center text-3xl sm:text-4xl transition-all
-                  ${isSelected
-                    ? "bg-white/40 ring-2 ring-white scale-110"
-                    : isDisabled
-                      ? "bg-white/5 opacity-40"
-                      : "bg-white/20 hover:bg-white/30 hover:scale-110 cursor-pointer"
-                  }`}
+                className={`w-20 h-20 sm:w-24 sm:h-24 rounded-xl backdrop-blur-sm flex flex-col items-center justify-center text-3xl sm:text-4xl transition-all ${isSelected ? "bg-white/40 ring-2 ring-white scale-110" : isDisabled ? "bg-white/5 opacity-40" : "bg-white/20 hover:bg-white/30 hover:scale-110 cursor-pointer" }`}
               >
                 <span>{c.emoji}</span>
                 <span className="text-xs text-white mt-1">{c.label}</span>
@@ -197,9 +190,7 @@ export default function RockPaperScissors({ onStateChange, gameState, onGameEnd,
               <span className="text-5xl">{lastRound.oppChoice ? choiceEmoji[lastRound.oppChoice] : "⏳"}</span>
             </div>
           </div>
-          <div className={`text-2xl font-bold ${
-            lastRound.result === "win" ? "text-green-400" : lastRound.result === "lose" ? "text-red-400" : "text-yellow-400"
-          }`}>
+          <div className={`text-2xl font-bold ${ lastRound.result === "win" ? "text-green-400" : lastRound.result === "lose" ? "text-red-400" : "text-yellow-400" }`}>
             {lastRound.result === "win" ? "You Win!" : lastRound.result === "lose" ? "You Lose!" : "Draw!"}
           </div>
           {!matchOver && (

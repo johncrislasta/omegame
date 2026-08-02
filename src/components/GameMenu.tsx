@@ -35,8 +35,8 @@ export default function GameMenu({ onSelectGame }: GameMenuProps) {
 
       {isOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setIsOpen(false)}>
-          <div className="bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-700" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-white mb-4">Choose a Game</h2>
+          <div className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-zinc-300 dark:border-zinc-700" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-4">Choose a Game</h2>
             <div className="space-y-3">
               {games.map((game) => (
                 <button
@@ -45,19 +45,19 @@ export default function GameMenu({ onSelectGame }: GameMenuProps) {
                     onSelectGame(game.id);
                     setIsOpen(false);
                   }}
-                  className="w-full p-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-left transition-colors flex items-center gap-4"
+                  className="w-full p-4 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 rounded-xl text-left transition-colors flex items-center gap-4"
                 >
                   <span className="text-3xl">{game.emoji}</span>
                   <div>
-                    <div className="text-white font-semibold">{game.name}</div>
-                    <div className="text-zinc-400 text-sm">{game.description}</div>
+                    <div className="text-zinc-900 dark:text-white font-semibold">{game.name}</div>
+                    <div className="text-zinc-600 dark:text-zinc-400 text-sm">{game.description}</div>
                   </div>
                 </button>
               ))}
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="mt-4 w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg transition-colors"
+              className="mt-4 w-full py-2 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg transition-colors"
             >
               Cancel
             </button>

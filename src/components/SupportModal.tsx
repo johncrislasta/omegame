@@ -186,13 +186,13 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-zinc-900 rounded-2xl p-6 max-w-md w-full border border-zinc-700 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-6 max-w-md w-full border border-zinc-300 dark:border-zinc-700 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white text-lg font-bold">Support OmeGame</h2>
-          <button onClick={onClose} className="text-zinc-400 hover:text-white text-lg">✕</button>
+          <h2 className="text-zinc-900 dark:text-white text-lg font-bold">Support OmeGame</h2>
+          <button onClick={onClose} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-lg">✕</button>
         </div>
 
-        <p className="text-zinc-400 text-sm mb-4">
+        <p className="text-zinc-600 dark:text-zinc-400 text-sm mb-4">
           If you enjoy using OmeGame, consider supporting development. Any amount helps keep the server running and new features coming!
         </p>
 
@@ -201,18 +201,14 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
             <div className="flex gap-2 mb-4">
               <button
                 onClick={() => setProvider("paypal")}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  activeProvider === "paypal" ? "bg-mint text-zinc-900" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                }`}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${ activeProvider === "paypal" ? "bg-mint text-zinc-900" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700" }`}
               >
                 PayPal
               </button>
               {showGcash && (
                 <button
                   onClick={() => setProvider("gcash")}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                    activeProvider === "gcash" ? "bg-mint text-zinc-900" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                  }`}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${ activeProvider === "gcash" ? "bg-mint text-zinc-900" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700" }`}
                 >
                   GCash
                 </button>
@@ -222,17 +218,13 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
             {activeProvider === "gcash" ? (
               <>
                 <div className="flex flex-col gap-3 mb-4">
-                  <p className="text-zinc-400 text-xs font-medium">Choose amount</p>
+                  <p className="text-zinc-600 dark:text-zinc-400 text-xs font-medium">Choose amount</p>
                   <div className="flex gap-2">
                     {GCASH_AMOUNTS.map((a) => (
                       <button
                         key={a}
                         onClick={() => setGcAmount(a)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                          gcAmount === a
-                            ? "bg-mint text-zinc-900"
-                            : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                        }`}
+                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${ gcAmount === a ? "bg-mint text-zinc-900" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700" }`}
                       >
                         ₱{a}
                       </button>
@@ -240,7 +232,7 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
                   </div>
                 </div>
 
-                <div className="bg-zinc-800/60 rounded-xl p-4 mb-4 flex flex-col items-center">
+                <div className="bg-zinc-200/60 dark:bg-zinc-800/60 rounded-xl p-4 mb-4 flex flex-col items-center">
                   <img
                     src={GCASH_QR[gcAmount]}
                     alt={`GCash QR for ₱${gcAmount}`}
@@ -249,8 +241,8 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
                       (e.currentTarget as HTMLImageElement).style.display = "none";
                     }}
                   />
-                  <p className="text-zinc-300 text-sm text-center">
-                    Scan with the GCash app and send <span className="text-mint font-semibold">₱{gcAmount}</span>
+                  <p className="text-zinc-700 dark:text-zinc-300 text-sm text-center">
+                    Scan with the GCash app and send <span className="text-mint-ink dark:text-mint font-semibold">₱{gcAmount}</span>
                   </p>
                   <p className="text-zinc-500 text-xs text-center mt-1 mb-3">
                     Save your receipt reference number — you'll enter it next.
@@ -266,17 +258,13 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
             ) : (
               <>
                 <div className="flex flex-col gap-3 mb-4">
-                  <p className="text-zinc-400 text-xs font-medium">Choose amount</p>
+                  <p className="text-zinc-600 dark:text-zinc-400 text-xs font-medium">Choose amount</p>
                   <div className="flex gap-2">
                     {AMOUNTS.map((a) => (
                       <button
                         key={a}
                         onClick={() => setAmount(a)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                          amount === a
-                            ? "bg-mint text-zinc-900"
-                            : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                        }`}
+                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${ amount === a ? "bg-mint text-zinc-900" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700" }`}
                       >
                         ${parseFloat(a).toFixed(0)}
                       </button>
@@ -302,7 +290,7 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3">
-            <p className="text-zinc-400 text-sm">
+            <p className="text-zinc-600 dark:text-zinc-400 text-sm">
               {activeProvider === "gcash"
                 ? `Thanks for paying ₱${gcAmount}! Leave your name so I can thank you:`
                 : "Payment confirmed! Leave your name so I can thank you:"}
@@ -313,7 +301,7 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name"
               required
-              className="w-full bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mint placeholder-zinc-500"
+              className="w-full bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mint placeholder-zinc-500"
             />
             {activeProvider === "gcash" && (
               <input
@@ -323,7 +311,7 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setRef(e.target.value)}
                 placeholder="GCash reference number"
                 required
-                className="w-full bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mint placeholder-zinc-500"
+                className="w-full bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mint placeholder-zinc-500"
               />
             )}
             <textarea
@@ -331,16 +319,16 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Message (optional)"
               rows={2}
-              className="w-full bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mint placeholder-zinc-500 resize-none"
+              className="w-full bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mint placeholder-zinc-500 resize-none"
             />
             {activeProvider === "gcash" && (
               <label className="block">
-                <span className="text-zinc-400 text-xs">Receipt screenshot (optional)</span>
+                <span className="text-zinc-600 dark:text-zinc-400 text-xs">Receipt screenshot (optional)</span>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => handleReceiptFile(e.target.files?.[0] ?? null)}
-                  className="w-full mt-1 text-zinc-400 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-zinc-700 file:text-zinc-200 file:text-xs file:font-medium"
+                  className="w-full mt-1 text-zinc-600 dark:text-zinc-400 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-zinc-300 dark:file:bg-zinc-700 file:text-zinc-700 dark:file:text-zinc-200 file:text-xs file:font-medium"
                 />
                 {receipt && (
                   <span className="inline-flex items-center gap-1 mt-1 text-green-400 text-xs">
@@ -348,7 +336,7 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
                     <button
                       type="button"
                       onClick={() => setReceipt(null)}
-                      className="text-zinc-500 hover:text-white underline"
+                      className="text-zinc-500 hover:text-zinc-900 dark:hover:text-white underline"
                     >
                       remove
                     </button>
@@ -368,17 +356,17 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
         )}
 
         {supporters.length > 0 && (
-          <div className={`${paid || submitted ? "pt-4 mt-4 border-t border-zinc-700" : "mt-6"}`}>
+          <div className={`${paid || submitted ? "pt-4 mt-4 border-t border-zinc-300 dark:border-zinc-700" : "mt-6"}`}>
             <p className="text-zinc-500 text-xs mb-3">Thank you to our supporters</p>
             <div className="space-y-2 max-h-40 overflow-y-auto">
               {supporters.slice(0, 50).map((s) => (
-                <div key={s.id} className="bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div key={s.id} className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-mint text-sm font-medium">{s.name}</span>
+                    <span className="text-mint-ink dark:text-mint text-sm font-medium">{s.name}</span>
                     <span className="text-zinc-500 text-xs">{formatAmount(s)}</span>
-                    <span className="text-zinc-600 text-[10px]">{formatSupportDate(s.timestamp)}</span>
+                    <span className="text-zinc-500 dark:text-zinc-600 text-[10px]">{formatSupportDate(s.timestamp)}</span>
                   </div>
-                  {s.message && <p className="text-zinc-400 text-xs mt-0.5">{s.message}</p>}
+                  {s.message && <p className="text-zinc-600 dark:text-zinc-400 text-xs mt-0.5">{s.message}</p>}
                 </div>
               ))}
             </div>
