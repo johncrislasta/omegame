@@ -189,9 +189,9 @@ export default function Home() {
             &hearts; Support OmeGame
           </button>
         </div>
-
-        {showSupport && <SupportModal onClose={() => setShowSupport(false)} />}
       </div>
+
+      {showSupport && <SupportModal onClose={() => setShowSupport(false)} />}
     </div>
   );
 }
