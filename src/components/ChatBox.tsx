@@ -15,7 +15,7 @@ const POSITIVE_FEEDBACK = [
   { emoji: "🤩", label: "Interesting" },
   { emoji: "🤣", label: "Funny" },
   { emoji: "😍", label: "Good looking" },
-  { emoji: "🤤", label: "Sexy" },
+  { emoji: "❤️", label: "Love" },
   { emoji: "👍", label: "Good" },
 ];
 
