@@ -185,7 +185,7 @@ export default function SupportModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-6 max-w-md w-full border border-zinc-300 dark:border-zinc-700 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-zinc-900 dark:text-white text-lg font-bold">Support OmeGame</h2>
