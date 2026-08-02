@@ -204,14 +204,31 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
     emit("find-stranger", { mode, interests: localInterests });
   }, [webrtc, resetState, emit, mode, localInterests]);
 
+  const handleEnterFullscreen = useCallback(() => {
+    if (typeof window === "undefined" || !window.matchMedia("(max-width: 640px)").matches) return;
+    const el = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => void;
+    };
+    try {
+      if (el.requestFullscreen) {
+        el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+      } else {
+        el.webkitRequestFullscreen?.();
+      }
+    } catch {
+      // iOS Safari does not support element fullscreen
+    }
+  }, []);
+
   const handleFindStranger = useCallback(() => {
+    handleEnterFullscreen();
     stopSearchRef.current = false;
     resetState();
     setStatus("waiting");
     setSearchStartTime(Date.now());
     setSearchPhase("exact");
     emit("find-stranger", { mode, interests: localInterests });
-  }, [resetState, emit, mode, localInterests]);
+  }, [resetState, emit, mode, localInterests, handleEnterFullscreen]);
 
   const handleStopSearch = useCallback(() => {
     stopSearchRef.current = true;
