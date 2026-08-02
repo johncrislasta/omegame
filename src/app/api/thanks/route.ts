@@ -15,7 +15,12 @@ export async function GET(req: NextRequest) {
     const token = req.nextUrl.searchParams.get("token");
     const isAdmin = token === process.env.ADMIN_TOKEN;
     const entries = await listEntries(!isAdmin);
-    return NextResponse.json(entries);
+    if (isAdmin) {
+      return NextResponse.json(entries);
+    }
+    return NextResponse.json(
+      entries.map(({ receipt, referenceNumber, ...rest }) => rest)
+    );
   } catch (err) {
     console.error("Supporters GET error:", err);
     return NextResponse.json({ error: "Database error" }, { status: 500 });
@@ -24,11 +29,31 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: Request) {
   try {
-    const { name, message, amount } = await req.json();
+    const { name, message, amount, provider, referenceNumber, receipt } = await req.json();
     const value = parseFloat(amount);
     if (isNaN(value) || value <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
+    const method: "paypal" | "gcash" = provider === "gcash" ? "gcash" : "paypal";
+    const currency: "USD" | "PHP" = method === "gcash" ? "PHP" : "USD";
+
+    let ref: string | undefined;
+    if (method === "gcash") {
+      const r = typeof referenceNumber === "string" ? referenceNumber.trim() : "";
+      if (!/^\d{6,30}$/.test(r)) {
+        return NextResponse.json({ error: "Reference number is required (6-30 digits)" }, { status: 400 });
+      }
+      ref = r;
+    }
+
+    let receiptData: string | undefined;
+    if (typeof receipt === "string" && receipt.length > 0) {
+      if (!receipt.startsWith("data:image/") || receipt.length > 2_000_000) {
+        return NextResponse.json({ error: "Invalid receipt image" }, { status: 400 });
+      }
+      receiptData = receipt;
+    }
+
     const entry: SupporterEntry = {
       id: randomUUID(),
       name:
@@ -39,6 +64,10 @@ export async function POST(req: Request) {
       amount: String(value),
       timestamp: Date.now(),
       approved: false,
+      provider: method,
+      currency,
+      referenceNumber: ref,
+      receipt: receiptData,
     };
     await ensureTable();
     await insertEntry(entry);

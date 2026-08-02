@@ -10,6 +10,14 @@ interface Entry {
   amount: string;
   timestamp: number;
   approved: boolean;
+  provider: "paypal" | "gcash";
+  currency: "USD" | "PHP";
+  referenceNumber?: string;
+  receipt?: string;
+}
+
+function formatAmount(e: Entry) {
+  return `${e.currency === "PHP" ? "₱" : "$"}${parseFloat(e.amount).toFixed(2)}`;
 }
 
 export default function AdminPage() {
@@ -102,13 +110,32 @@ export default function AdminPage() {
         <div className="space-y-2 mb-6">
           {pending.map((e) => (
             <div key={e.timestamp} className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2 flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-mint-ink dark:text-mint text-sm font-medium">{e.name}</span>
-                  <span className="text-zinc-500 text-xs">${parseFloat(e.amount).toFixed(2)}</span>
+                  {e.provider === "gcash" && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/60 text-blue-300 font-semibold">GCash</span>
+                  )}
+                  <span className="text-zinc-500 text-xs">{formatAmount(e)}</span>
                   <span className="text-zinc-500 dark:text-zinc-600 text-[10px]">{formatSupportDate(e.timestamp)}</span>
                 </div>
+                {e.provider === "gcash" && e.referenceNumber && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-zinc-600 dark:text-zinc-400 text-xs font-mono">Ref: {e.referenceNumber}</span>
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(e.referenceNumber ?? "")}
+                      className="text-zinc-500 hover:text-zinc-900 dark:hover:text-white text-[10px] underline"
+                    >
+                      copy
+                    </button>
+                  </div>
+                )}
                 {e.message && <p className="text-zinc-600 dark:text-zinc-400 text-xs mt-0.5">{e.message}</p>}
+                {e.receipt && (
+                  <a href={e.receipt} target="_blank" rel="noreferrer" className="inline-block mt-2">
+                    <img src={e.receipt} alt="Receipt" className="h-20 w-20 object-cover rounded border border-zinc-400 dark:border-zinc-600" />
+                  </a>
+                )}
               </div>
               <div className="flex gap-2 shrink-0">
                 <button
@@ -132,12 +159,18 @@ export default function AdminPage() {
         <div className="space-y-2">
           {approved.map((e) => (
             <div key={e.timestamp} className="bg-zinc-200/30 dark:bg-zinc-800/30 rounded-lg px-3 py-2 flex items-start justify-between gap-3 opacity-60">
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-mint-ink dark:text-mint text-sm font-medium">{e.name}</span>
-                  <span className="text-zinc-500 text-xs">${parseFloat(e.amount).toFixed(2)}</span>
+                  {e.provider === "gcash" && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/60 text-blue-300 font-semibold">GCash</span>
+                  )}
+                  <span className="text-zinc-500 text-xs">{formatAmount(e)}</span>
                   <span className="text-zinc-500 dark:text-zinc-600 text-[10px]">{formatSupportDate(e.timestamp)}</span>
                 </div>
+                {e.provider === "gcash" && e.referenceNumber && (
+                  <span className="text-zinc-600 dark:text-zinc-400 text-xs font-mono mt-1 block">Ref: {e.referenceNumber}</span>
+                )}
                 {e.message && <p className="text-zinc-600 dark:text-zinc-400 text-xs mt-0.5">{e.message}</p>}
               </div>
               <button
