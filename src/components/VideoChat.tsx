@@ -884,31 +884,40 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
           </div>
         </div>
 
-        {showChat && mode === "video" && (
-          <div className={`w-full lg:w-80 ${gameType ? "h-40" : "h-64"} lg:h-auto border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 flex flex-col min-h-0`}>
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-300 dark:border-zinc-700">
-              <span className="text-zinc-900 dark:text-white font-medium text-sm">Chat</span>
-              <button onClick={() => setShowChat(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-lg">
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 min-h-0">
-              <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} onFeedback={handleFeedback} incomingFeedback={incomingFeedback} />
-            </div>
-          </div>
-        )}
-
-        {mode === "video" && gameType && (
-          <div className={`w-full lg:w-80 ${gameType === "tic-tac-toe" ? "h-[58%]" : "h-[45%]"} lg:h-auto border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 flex flex-col min-h-0`}>
-            <GamePanel
-              key={gameKey}
-              gameType={gameType}
-              isHost={isGameHost}
-              gameState={gameState}
-              onLocalState={handleGameLocalState}
-              onGameEnd={handleGameEnd}
-              onGameOver={handleGameOver}
-            />
+        {mode === "video" && (showChat || gameType) && (
+          <div className={`w-full lg:w-80 lg:h-auto flex flex-col min-h-0 border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 ${
+            !gameType
+              ? "h-64"
+              : showChat
+                ? gameType === "tic-tac-toe" ? "h-[calc(58%+10rem)]" : "h-[calc(45%+10rem)]"
+                : gameType === "tic-tac-toe" ? "h-[58%]" : "h-[45%]"
+          }`}>
+            {gameType && (
+              <div className={`flex-1 min-h-0 lg:flex-[5] ${showChat ? "border-b border-zinc-300 dark:border-zinc-700" : ""}`}>
+                <GamePanel
+                  key={gameKey}
+                  gameType={gameType}
+                  isHost={isGameHost}
+                  gameState={gameState}
+                  onLocalState={handleGameLocalState}
+                  onGameEnd={handleGameEnd}
+                  onGameOver={handleGameOver}
+                />
+              </div>
+            )}
+            {showChat && (
+              <div className={`${gameType ? "h-40 lg:h-auto lg:flex-[3]" : "h-full"} flex flex-col min-h-0`}>
+                <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-300 dark:border-zinc-700 shrink-0">
+                  <span className="text-zinc-900 dark:text-white font-medium text-sm">Chat</span>
+                  <button onClick={() => setShowChat(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-lg">
+                    ✕
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0">
+                  <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} onFeedback={handleFeedback} incomingFeedback={incomingFeedback} />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
