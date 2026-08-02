@@ -34,15 +34,20 @@ function ChatContent() {
           </div>
           <ThemeToggle />
           <div className="relative">
-            <select
-              value={mode}
-              onChange={(e) => switchMode(e.target.value)}
-              aria-label="Switch chat mode"
-              className="sm:hidden appearance-none bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm px-2 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 focus:border-mint focus:outline-none cursor-pointer transition-colors"
-            >
-              <option value="video">🎥</option>
-              <option value="text">💬</option>
-            </select>
+            <div className="sm:hidden relative">
+              <select
+                value={mode}
+                onChange={(e) => switchMode(e.target.value)}
+                aria-label="Switch chat mode"
+                className="appearance-none bg-zinc-200 dark:bg-zinc-800 text-transparent text-sm w-11 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 focus:border-mint focus:outline-none cursor-pointer transition-colors"
+              >
+                <option value="video" className="text-zinc-900">🎥 Video Chat</option>
+                <option value="text" className="text-zinc-900">💬 Text Chat</option>
+              </select>
+              <span className="pointer-events-none absolute inset-y-0 left-0 w-full flex items-center justify-center text-sm">
+                {mode === "video" ? "🎥" : "💬"}
+              </span>
+            </div>
             <select
               value={mode}
               onChange={(e) => switchMode(e.target.value)}
