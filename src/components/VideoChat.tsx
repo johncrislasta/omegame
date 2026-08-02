@@ -190,6 +190,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
   };
 
   const pipSplitLandscape = containerLandscape && containerWidth >= 640;
+  const compactVideo = mode === "video" && containerWidth > 0 && containerWidth < 640 && showChat && gameType;
 
   const handleSkip = useCallback(() => {
     webrtc.cleanup();
@@ -586,7 +587,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
         <div className="flex-1 flex flex-col min-h-0">
           {mode === "video" ? (
             <div ref={videoContainerRef} className="flex-1 relative min-h-0">
-              <div className={`absolute bg-zinc-100 dark:bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${ pipPinned ? pipSplitLandscape ? snapCorner.endsWith("left") ? "top-0 bottom-0 left-1/2 right-0" : "top-0 bottom-0 left-0 right-1/2" : snapCorner.startsWith("top") ? "top-1/2 bottom-0 left-0 right-0" : "top-0 bottom-1/2 left-0 right-0" : "inset-0" }`}>
+              <div className={`absolute bg-zinc-100 dark:bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${ compactVideo ? "top-0 bottom-0 left-0 right-1/2" : pipPinned ? pipSplitLandscape ? snapCorner.endsWith("left") ? "top-0 bottom-0 left-1/2 right-0" : "top-0 bottom-0 left-0 right-1/2" : snapCorner.startsWith("top") ? "top-1/2 bottom-0 left-0 right-0" : "top-0 bottom-1/2 left-0 right-0" : "inset-0" }`}>
                 {webrtc.remoteStream ? (
                   <>
                   <video
@@ -688,19 +689,21 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
 
               <div
                 data-pip
-                onPointerDown={pipPinned ? undefined : handleVideoDragStart}
-                onPointerMove={pipPinned ? undefined : handleVideoDragMove}
-                onPointerUp={pipPinned ? undefined : handleVideoDragEnd}
+                onPointerDown={compactVideo || pipPinned ? undefined : handleVideoDragStart}
+                onPointerMove={compactVideo || pipPinned ? undefined : handleVideoDragMove}
+                onPointerUp={compactVideo || pipPinned ? undefined : handleVideoDragEnd}
                 className={`absolute bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,width,height,transform,transform-origin] duration-200 ease-out ${
-                  pipPinned
-                    ? pipSplitLandscape
-                      ? snapCorner.endsWith("left")
-                        ? "top-0 left-0 w-1/2 h-full"
-                        : "top-0 right-0 w-1/2 h-full"
-                      : snapCorner.startsWith("top")
-                        ? "top-0 left-0 w-full h-1/2"
-                        : "bottom-0 left-0 w-full h-1/2"
-                    : `${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 ${pipEnlarged ? "scale-[2.5]" : "scale-100"}`
+                  compactVideo
+                    ? "top-0 bottom-0 right-0 w-1/2"
+                    : pipPinned
+                      ? pipSplitLandscape
+                        ? snapCorner.endsWith("left")
+                          ? "top-0 left-0 w-1/2 h-full"
+                          : "top-0 right-0 w-1/2 h-full"
+                        : snapCorner.startsWith("top")
+                          ? "top-0 left-0 w-full h-1/2"
+                          : "bottom-0 left-0 w-full h-1/2"
+                      : `${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 ${pipEnlarged ? "scale-[2.5]" : "scale-100"}`
                 }`}
               >
                 {webrtc.localStream ? (
@@ -721,7 +724,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     Loading...
                   </div>
                 )}
-                {pipEnlarged && !pipPinned && (
+                {!compactVideo && pipEnlarged && !pipPinned && (
                   <button
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => setPipPinned(true)}
@@ -731,7 +734,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     📌
                   </button>
                 )}
-                {pipPinned && (
+                {!compactVideo && pipPinned && (
                   <button
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => setPipPinned(false)}
