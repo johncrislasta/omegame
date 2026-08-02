@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   manifest: "/favicon/site.webmanifest",
   other: {
     "apple-mobile-web-app-title": "OmeGame",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    "mobile-web-app-capable": "yes",
   },
 };
 
