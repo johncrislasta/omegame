@@ -885,7 +885,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
         </div>
 
         {mode === "video" && (showChat || gameType) && (
-          <div className={`w-full lg:w-80 lg:h-auto flex flex-col min-h-0 border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 ${
+          <div className={`w-full lg:w-96 lg:h-auto flex flex-col min-h-0 border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 ${
             !gameType
               ? "h-64"
               : showChat
