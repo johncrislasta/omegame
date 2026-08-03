@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useSocket } from "@/hooks/useSocket";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useCountry } from "@/hooks/useCountry";
+import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import GameMenu from "./GameMenu";
 import GamePanel from "./GamePanel";
 import RockPaperScissorsCamera, { type RpsServerResult } from "./games/RockPaperScissorsCamera";
@@ -15,6 +16,18 @@ import { v4 as uuid } from "uuid";
 
 type Status = "idle" | "waiting" | "matched" | "connecting" | "connected" | "disconnected";
 type SnapCorner = "top-right" | "top-left" | "bottom-right" | "bottom-left";
+
+interface FlyingReaction {
+  id: number;
+  emoji: string;
+  isPositive: boolean;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+}
+
+let reactionId = 0;
 
 interface VideoChatProps {
   mode?: "video" | "text";
@@ -48,8 +61,10 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
   const [pipPinned, setPipPinned] = useState(false);
   const [containerLandscape, setContainerLandscape] = useState(true);
   const [containerWidth, setContainerWidth] = useState(0);
+  const isTouchDevice = useCoarsePointer();
   const [partnerCountry, setPartnerCountry] = useState<string | null>(null);
   const [incomingFeedback, setIncomingFeedback] = useState<{ type: string; isPositive: boolean } | null>(null);
+  const [flyingReactions, setFlyingReactions] = useState<FlyingReaction[]>([]);
   const [sharedInterests, setSharedInterests] = useState<string[]>([]);
   const [searchStartTime, setSearchStartTime] = useState<number>(0);
   const [searchPhase, setSearchPhase] = useState<"exact" | "broad" | "any">("exact");
@@ -59,6 +74,8 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const remoteFeedRef = useRef<HTMLDivElement | null>(null);
+  const localFeedRef = useRef<HTMLDivElement | null>(null);
   const [hasFrozenFrame, setHasFrozenFrame] = useState(false);
 
   const partnerIdRef = useRef<string | null>(null);
@@ -136,6 +153,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
     setSharedInterests([]);
     setSearchStartTime(0);
     setSearchPhase("exact");
+    setHasFrozenFrame(false);
   }, []);
 
   const handleVideoDragStart = useCallback((e: React.PointerEvent) => {
@@ -196,7 +214,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
     "bottom-left": "bottom-3 left-3 origin-bottom-left",
   };
 
-  const pipSplitLandscape = containerLandscape && containerWidth >= 640;
+  const pipSplitLandscape = !isTouchDevice && containerLandscape && containerWidth >= 640;
   const splitLandscape = pipSplitLandscape;
   const isCameraRPS = mode === "video" && gameType === "rock-paper-scissors";
   const compactVideo = mode === "video" && containerWidth > 0 && containerWidth < 640 && showChat && gameType && !isCameraRPS;
@@ -371,6 +389,31 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
     return () => window.clearInterval(id);
   }, [webrtc.remoteStream]);
 
+  // Throw a reaction emoji from one video feed's center to the other, so it
+  // reads as "passing" the emoji to the partner regardless of chat window state.
+  const launchReaction = useCallback((emoji: string, isPositive: boolean, fromEl: HTMLElement | null, toEl: HTMLElement | null) => {
+    if (!fromEl || !toEl) return;
+    const fromRect = fromEl.getBoundingClientRect();
+    const toRect = toEl.getBoundingClientRect();
+    if (fromRect.width === 0 || toRect.width === 0) return;
+    const id = ++reactionId;
+    setFlyingReactions((prev) => [
+      ...prev,
+      {
+        id,
+        emoji,
+        isPositive,
+        fromX: fromRect.left + fromRect.width / 2,
+        fromY: fromRect.top + fromRect.height / 2,
+        toX: toRect.left + toRect.width / 2,
+        toY: toRect.top + toRect.height / 2,
+      },
+    ]);
+    setTimeout(() => {
+      setFlyingReactions((prev) => prev.filter((r) => r.id !== id));
+    }, 2000);
+  }, []);
+
   const handleFeedback = useCallback(
     (type: string, category: string, isPositive: boolean) => {
       if (!partnerIdRef.current) return;
@@ -379,8 +422,9 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
         ...prev,
         { id: uuid(), text: `You sent ${type}`, sender: "me", timestamp: Date.now(), kind: "feedback" },
       ]);
+      launchReaction(type, isPositive, localFeedRef.current, remoteFeedRef.current);
     },
-    [emit]
+    [emit, launchReaction]
   );
 
   useEffect(() => {
@@ -488,6 +532,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
           { id: uuid(), text: `Stranger sent ${type}`, sender: "stranger", timestamp: Date.now(), kind: "feedback" },
         ]);
         setTimeout(() => setIncomingFeedback(null), 1000);
+        launchReaction(type, isPositive, remoteFeedRef.current, localFeedRef.current);
       })
     );
 
@@ -605,7 +650,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
     return () => {
       cleanups.forEach((fn) => fn());
     };
-  }, [on, webrtc, emit, resetState, mode, localInterests]);
+  }, [on, webrtc, emit, resetState, mode, localInterests, launchReaction]);
 
   useEffect(() => {
     if (mode === "text") return;
@@ -652,11 +697,12 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         <div className="flex-1 flex flex-col min-h-0">
           {mode === "video" ? (
+            <>
             <div ref={videoContainerRef} className="flex-1 relative min-h-0">
-              <div className={`absolute bg-zinc-100 dark:bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${
+              <div ref={remoteFeedRef} className={`absolute bg-zinc-100 dark:bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${
                 isCameraRPS
                   ? splitLandscape ? "top-0 bottom-0 left-0 w-1/2" : "top-0 left-0 right-0 h-1/2"
-                  : compactVideo ? "top-0 bottom-0 left-0 right-1/2" : pipPinned ? pipSplitLandscape ? snapCorner.endsWith("left") ? "top-0 bottom-0 left-1/2 right-0" : "top-0 bottom-0 left-0 right-1/2" : snapCorner.startsWith("top") ? "top-1/2 bottom-0 left-0 right-0" : "top-0 bottom-1/2 left-0 right-0" : "inset-0" }`}>
+                  : pipPinned ? pipSplitLandscape ? snapCorner.endsWith("left") ? "top-0 bottom-0 left-1/2 right-0" : "top-0 bottom-0 left-0 right-1/2" : snapCorner.startsWith("top") ? "top-1/2 bottom-0 left-0 right-0" : "top-0 bottom-1/2 left-0 right-0" : compactVideo ? "top-0 bottom-0 left-0 right-1/2" : "inset-0" }`}>
                 <video
                   ref={(el) => {
                     remoteVideoRef.current = el;
@@ -761,24 +807,25 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
               </div>
 
               <div
+                ref={localFeedRef}
                 data-pip
                 onPointerDown={compactVideo || pipPinned || isCameraRPS ? undefined : handleVideoDragStart}
                 onPointerMove={compactVideo || pipPinned || isCameraRPS ? undefined : handleVideoDragMove}
                 onPointerUp={compactVideo || pipPinned || isCameraRPS ? undefined : handleVideoDragEnd}
-                className={`absolute bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,width,height,transform,transform-origin] duration-200 ease-out ${
+                className={`absolute bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,width,height] duration-200 ease-out ${
                   isCameraRPS
                     ? splitLandscape ? "top-0 bottom-0 right-0 w-1/2" : "bottom-0 left-0 right-0 h-1/2"
-                    : compactVideo
-                      ? "top-0 bottom-0 right-0 w-1/2"
-                      : pipPinned
-                        ? pipSplitLandscape
-                          ? snapCorner.endsWith("left")
-                            ? "top-0 left-0 w-1/2 h-full"
-                            : "top-0 right-0 w-1/2 h-full"
-                          : snapCorner.startsWith("top")
-                            ? "top-0 left-0 w-full h-1/2"
-                            : "bottom-0 left-0 w-full h-1/2"
-                        : `${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 ${pipEnlarged ? "scale-[2.5]" : "scale-100"}`
+                    : pipPinned
+                      ? pipSplitLandscape
+                        ? snapCorner.endsWith("left")
+                          ? "top-0 left-0 w-1/2 h-full"
+                          : "top-0 right-0 w-1/2 h-full"
+                        : snapCorner.startsWith("top")
+                          ? "top-0 left-0 w-full h-1/2"
+                          : "bottom-0 left-0 w-full h-1/2"
+                      : compactVideo
+                        ? "top-0 bottom-0 right-0 w-1/2"
+                        : `${snapClass[snapCorner]} ${pipEnlarged ? "w-56 h-40 sm:w-72 sm:h-48" : "w-28 h-20 sm:w-36 sm:h-28"}`
                 }`}
               >
                 {webrtc.localStream ? (
@@ -810,7 +857,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     📌
                   </button>
                 )}
-                {!compactVideo && !isCameraRPS && pipPinned && (
+                {!isCameraRPS && pipPinned && (
                   <button
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => setPipPinned(false)}
@@ -837,6 +884,27 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                 />
               )}
             </div>
+
+            {flyingReactions.map((r) => (
+              <div
+                key={r.id}
+                className={`fixed z-50 ${r.isPositive ? "text-emerald-500" : "text-rose-500"}`}
+                style={{
+                  left: 0,
+                  top: 0,
+                  fontSize: "clamp(2rem, 6vh, 3.5rem)",
+                  ["--fx" as string]: `${r.fromX}px`,
+                  ["--fy" as string]: `${r.fromY}px`,
+                  ["--tx" as string]: `${r.toX}px`,
+                  ["--ty" as string]: `${r.toY}px`,
+                }}
+              >
+                <div className="animate-feedback-throw">
+                  <div className="animate-feedback-pop">{r.emoji}</div>
+                </div>
+              </div>
+            ))}
+            </>
           ) : (
             <div className="flex-1 flex flex-col lg:flex-row min-h-0">
               <div className="flex-1 flex flex-col items-center justify-center p-0 sm:p-8 min-h-0 relative">
@@ -915,7 +983,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
             {status === "connected" && (
                   <div className="w-full h-full flex flex-col min-h-0">
                     <div className="flex-1 min-h-0">
-                      <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} onFeedback={handleFeedback} incomingFeedback={incomingFeedback} />
+                  <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} onFeedback={handleFeedback} incomingFeedback={null} flyInline={false} />
                     </div>
                   </div>
                 )}
