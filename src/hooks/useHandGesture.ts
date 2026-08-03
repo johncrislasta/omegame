@@ -50,7 +50,7 @@ export function useHandGesture({
   videoRef,
   enabled,
   warmup = false,
-  minConfidence = 0.35,
+  minConfidence = 0.15,
   onDetect,
 }: UseHandGestureOptions) {
   const [status, setStatus] = useState<HandStatus>(() => (enabled || warmup ? "loading" : "idle"));

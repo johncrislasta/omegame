@@ -2,21 +2,18 @@
 
 import TicTacToe from "./games/TicTacToe";
 import RockPaperScissors from "./games/RockPaperScissors";
-import RockPaperScissorsCamera from "./games/RockPaperScissorsCamera";
 import type { GameType } from "@/lib/types";
 
 interface GamePanelProps {
   gameType: GameType;
   isHost: boolean;
-  mode?: "video" | "text";
-  localVideoRef?: React.RefObject<HTMLVideoElement | null>;
   gameState: Record<string, unknown>;
   onLocalState: (state: unknown) => void;
   onGameEnd: () => void;
   onGameOver: () => void;
 }
 
-export default function GamePanel({ gameType, isHost, mode = "video", localVideoRef, gameState, onLocalState, onGameEnd, onGameOver }: GamePanelProps) {
+export default function GamePanel({ gameType, isHost, gameState, onLocalState, onGameEnd, onGameOver }: GamePanelProps) {
   if (!gameType) return null;
 
   return (
@@ -42,21 +39,12 @@ export default function GamePanel({ gameType, isHost, mode = "video", localVideo
           />
         )}
         {gameType === "rock-paper-scissors" && (
-          mode === "video" && localVideoRef ? (
-            <RockPaperScissorsCamera
-              onStateChange={(state) => onLocalState(state)}
-              gameState={gameState}
-              onGameOver={onGameOver}
-              localVideoRef={localVideoRef}
-            />
-          ) : (
-            <RockPaperScissors
-              onStateChange={(state) => onLocalState(state)}
-              gameState={gameState}
-              onGameEnd={onGameEnd}
-              onGameOver={onGameOver}
-            />
-          )
+          <RockPaperScissors
+            onStateChange={(state) => onLocalState(state)}
+            gameState={gameState}
+            onGameEnd={onGameEnd}
+            onGameOver={onGameOver}
+          />
         )}
       </div>
     </div>

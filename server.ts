@@ -64,6 +64,36 @@ const userFeedbackGiven = new Map<string, { type: string; category: string; isPo
 const userInterests = new Map<string, string[]>();
 const interestCounts = new Map<string, number>();
 
+const RPS_BUFFER_MS = 1000;
+const rpsSubmissions = new Map<
+  string,
+  { aId: string; aChoice: string | null; bId: string | null; bChoice: string | null; nonce: number; timer: ReturnType<typeof setTimeout> }
+>();
+
+function rpsPairKey(a: string, b: string) {
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+function rpsWinner(a: string, b: string): "win" | "lose" | "draw" {
+  if (a === b) return "draw";
+  if ((a === "rock" && b === "scissors") || (a === "scissors" && b === "paper") || (a === "paper" && b === "rock")) return "win";
+  return "lose";
+}
+
+function resolveRpsRound(key: string) {
+  const entry = rpsSubmissions.get(key);
+  if (!entry) return;
+  rpsSubmissions.delete(key);
+  clearTimeout(entry.timer);
+  const resultA = entry.aChoice && entry.bChoice ? rpsWinner(entry.aChoice, entry.bChoice) : entry.aChoice ? "win" : entry.bChoice ? "lose" : "draw";
+  const resultB = entry.bChoice && entry.aChoice ? rpsWinner(entry.bChoice, entry.aChoice) : entry.bChoice ? "win" : entry.aChoice ? "lose" : "draw";
+  io.to(entry.aId).emit("rps-result", { nonce: entry.nonce, myChoice: entry.aChoice, oppChoice: entry.bChoice, result: resultA });
+  if (entry.bId) {
+    io.to(entry.bId).emit("rps-result", { nonce: entry.nonce, myChoice: entry.bChoice, oppChoice: entry.aChoice, result: resultB });
+  }
+  console.log(`[Server] RPS resolved round ${entry.nonce}: ${entry.aChoice ?? "null"} vs ${entry.bChoice ?? "null"}`);
+}
+
 function updateInterestCounts(socketId: string, newInterests: string[]) {
   const old = userInterests.get(socketId);
   if (old) {
@@ -250,6 +280,36 @@ io.on("connection", (socket) => {
     io.to(to).emit("game-state", { from: socket.id, state });
   });
 
+  socket.on("rps-submit", ({ to, nonce, choice }: { to: string; nonce: number; choice: string | null }) => {
+    const from = socket.id;
+    const key = `${rpsPairKey(from, to)}:${nonce}`;
+    const existing = rpsSubmissions.get(key);
+    if (!existing) {
+      rpsSubmissions.set(key, {
+        aId: from,
+        aChoice: choice,
+        bId: null,
+        bChoice: null,
+        nonce,
+        timer: setTimeout(() => resolveRpsRound(key), RPS_BUFFER_MS),
+      });
+      console.log(`[Server] RPS submit ${from} (round ${nonce}): ${choice ?? "null"}`);
+      return;
+    }
+    if (existing.aId === from) {
+      existing.aChoice = choice;
+      console.log(`[Server] RPS re-submit ${from} (round ${nonce}): ${choice ?? "null"}`);
+    } else if (existing.bId === from) {
+      existing.bChoice = choice;
+      console.log(`[Server] RPS re-submit ${from} (round ${nonce}): ${choice ?? "null"}`);
+    } else {
+      existing.bId = from;
+      existing.bChoice = choice;
+      console.log(`[Server] RPS submit ${from} (round ${nonce}): ${choice ?? "null"}`);
+      resolveRpsRound(key);
+    }
+  });
+
   socket.on("game-reject", ({ to }: { to: string }) => {
     io.to(to).emit("game-reject", { from: socket.id });
   });
@@ -306,6 +366,13 @@ io.on("connection", (socket) => {
       userInterests.delete(socket.id);
     }
     console.log(`[Server] User disconnected: ${socket.id}`);
+
+    for (const [key, entry] of rpsSubmissions) {
+      if (entry.aId === socket.id || entry.bId === socket.id) {
+        clearTimeout(entry.timer);
+        rpsSubmissions.delete(key);
+      }
+    }
 
     for (const q of [waitingQueues.video, waitingQueues.text]) {
       const idx = q.findIndex((w) => w.socketId === socket.id);

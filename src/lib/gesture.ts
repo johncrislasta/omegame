@@ -10,7 +10,7 @@ type Finger = "index" | "middle" | "ring" | "pinky";
 
 const WRIST = 0;
 const TIP: Record<Finger, number> = { index: 8, middle: 12, ring: 16, pinky: 20 };
-const MCP: Record<Finger, number> = { index: 5, middle: 9, ring: 13, pinky: 17 };
+const PIP: Record<Finger, number> = { index: 6, middle: 10, ring: 14, pinky: 18 };
 
 const FINGERS: Finger[] = ["index", "middle", "ring", "pinky"];
 
@@ -18,11 +18,11 @@ const distance = (a: Landmark, b: Landmark) => Math.hypot(a.x - b.x, a.y - b.y, 
 
 function extensionScore(landmarks: Landmark[], finger: Finger): number {
   const wrist = landmarks[WRIST];
-  const mcp = landmarks[MCP[finger]];
+  const pip = landmarks[PIP[finger]];
   const tip = landmarks[TIP[finger]];
-  const mcpDist = distance(mcp, wrist);
-  if (mcpDist === 0) return 0;
-  return (distance(tip, wrist) - mcpDist) / mcpDist;
+  const pipDist = distance(pip, wrist);
+  if (pipDist === 0) return 0;
+  return (distance(tip, wrist) - pipDist) / pipDist;
 }
 
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
@@ -37,8 +37,8 @@ export function classifyGesture(landmarks: Landmark[]): { gesture: Gesture; conf
     pinky: extensionScore(landmarks, "pinky"),
   };
 
-  const EXTENDED = 0.3;
-  const CURLED = -0.3;
+  const EXTENDED = 0.15;
+  const CURLED = -0.15;
 
   const allCurled = FINGERS.every((f) => scores[f] < CURLED);
   if (allCurled) {

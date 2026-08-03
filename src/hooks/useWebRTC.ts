@@ -54,6 +54,7 @@ export function useWebRTC(
 ): UseWebRTCReturn {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -65,6 +66,8 @@ export function useWebRTC(
       if (pcRef.current) {
         pcRef.current.close();
       }
+      remoteStreamRef.current = null;
+      setRemoteStream(null);
       const iceServers = await fetchIceServers();
       const pc = new RTCPeerConnection({ iceServers });
       pcRef.current = pc;
@@ -79,9 +82,14 @@ export function useWebRTC(
       };
 
       pc.ontrack = (event) => {
-        if (event.streams[0]) {
-          setRemoteStream(event.streams[0]);
+        // Consolidate all incoming tracks into a single persistent MediaStream so
+        // the video element is never handed a fresh stream object mid-connection
+        // (which would restart playback and cause a visible flicker).
+        if (!remoteStreamRef.current) {
+          remoteStreamRef.current = new MediaStream();
+          setRemoteStream(remoteStreamRef.current);
         }
+        remoteStreamRef.current.addTrack(event.track);
       };
 
       pc.onconnectionstatechange = () => {
@@ -165,6 +173,7 @@ export function useWebRTC(
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     setLocalStream(null);
+    remoteStreamRef.current = null;
     setRemoteStream(null);
     setIsReady(false);
     partnerIdRef.current = null;
