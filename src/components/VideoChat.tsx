@@ -633,7 +633,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
         setTimeout(() => {
           emit("find-stranger", { mode, interests: localInterests });
           setStatus("waiting");
-        }, 300);
+        }, 1000);
       })
     );
 
