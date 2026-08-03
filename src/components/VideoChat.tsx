@@ -6,8 +6,10 @@ import { useWebRTC } from "@/hooks/useWebRTC";
 import { useCountry } from "@/hooks/useCountry";
 import GameMenu from "./GameMenu";
 import GamePanel from "./GamePanel";
+import RockPaperScissorsCamera, { type RpsServerResult } from "./games/RockPaperScissorsCamera";
 import ChatBox from "./ChatBox";
 import type { ChatMessage, GameType } from "@/lib/types";
+import type { Gesture } from "@/lib/gesture";
 import { countryFlagUrl } from "@/lib/countryFlag";
 import { v4 as uuid } from "uuid";
 
@@ -39,6 +41,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
   const [pendingPlayAgain, setPendingPlayAgain] = useState(false);
   const [partnerPendingPlayAgain, setPartnerPendingPlayAgain] = useState(false);
   const [gameKey, setGameKey] = useState(0);
+  const [rpsResult, setRpsResult] = useState<RpsServerResult | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [snapCorner, setSnapCorner] = useState<SnapCorner>("top-right");
   const [pipEnlarged, setPipEnlarged] = useState(false);
@@ -53,6 +56,10 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
 
   const dragRef = useRef<{ startX: number; startY: number; startLeft: number; startTop: number; moved: boolean } | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [hasFrozenFrame, setHasFrozenFrame] = useState(false);
 
   const partnerIdRef = useRef<string | null>(null);
   const pendingInviteRef = useRef<{ from: string; gameType: string } | null>(null);
@@ -190,7 +197,10 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
   };
 
   const pipSplitLandscape = containerLandscape && containerWidth >= 640;
-  const compactVideo = mode === "video" && containerWidth > 0 && containerWidth < 640 && showChat && gameType;
+  const splitLandscape = pipSplitLandscape;
+  const isCameraRPS = mode === "video" && gameType === "rock-paper-scissors";
+  const compactVideo = mode === "video" && containerWidth > 0 && containerWidth < 640 && showChat && gameType && !isCameraRPS;
+  const showFrozenFrame = !webrtc.remoteStream && hasFrozenFrame && status !== "disconnected" && status !== "idle";
 
   const handleSkip = useCallback(() => {
     webrtc.cleanup();
@@ -293,6 +303,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
 
   const handleGameOver = useCallback(() => {
     setGameOver(true);
+    setRpsResult(null);
   }, []);
 
 
@@ -328,6 +339,37 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
     },
     [emit]
   );
+
+  const handleRpsSubmitChoice = useCallback(
+    (payload: { nonce: number; choice: Gesture | null }) => {
+      if (partnerIdRef.current) {
+        emit("rps-submit", { to: partnerIdRef.current, nonce: payload.nonce, choice: payload.choice });
+      }
+    },
+    [emit]
+  );
+
+  // Keep a throttled snapshot of the latest remote frame on a canvas so the
+  // last image stays visible while the stream drops/reconnects (avoids a black
+  // flicker between matches).
+  useEffect(() => {
+    if (!webrtc.remoteStream) return;
+    const video = remoteVideoRef.current;
+    const canvas = remoteCanvasRef.current;
+    if (!video || !canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const capture = () => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        setHasFrozenFrame(true);
+      }
+    };
+    const id = window.setInterval(capture, 250);
+    return () => window.clearInterval(id);
+  }, [webrtc.remoteStream]);
 
   const handleFeedback = useCallback(
     (type: string, category: string, isPositive: boolean) => {
@@ -486,6 +528,12 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
     );
 
     cleanups.push(
+      on("rps-result", (data: unknown) => {
+        setRpsResult(data as RpsServerResult);
+      })
+    );
+
+    cleanups.push(
       on("game-end", () => {
         setGameType(null);
         setGameState({});
@@ -494,6 +542,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
         setPartnerPendingPlayAgain(false);
         pendingPlayAgainRef.current = false;
         setIsGameHost(false);
+        setRpsResult(null);
       })
     );
 
@@ -604,29 +653,36 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
         <div className="flex-1 flex flex-col min-h-0">
           {mode === "video" ? (
             <div ref={videoContainerRef} className="flex-1 relative min-h-0">
-              <div className={`absolute bg-zinc-100 dark:bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${ compactVideo ? "top-0 bottom-0 left-0 right-1/2" : pipPinned ? pipSplitLandscape ? snapCorner.endsWith("left") ? "top-0 bottom-0 left-1/2 right-0" : "top-0 bottom-0 left-0 right-1/2" : snapCorner.startsWith("top") ? "top-1/2 bottom-0 left-0 right-0" : "top-0 bottom-1/2 left-0 right-0" : "inset-0" }`}>
-                {webrtc.remoteStream ? (
-                  <>
-                  <video
-                    ref={(el) => {
-                      if (el) el.srcObject = webrtc.remoteStream;
-                    }}
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
-                  {partnerCountry && countryFlagUrl(partnerCountry) && (
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-1 z-10 flex items-center gap-1" title={partnerCountry}>
-                      <img src={countryFlagUrl(partnerCountry)} alt={partnerCountry} className="w-6 h-[15px] rounded-sm" />
-                      {sharedInterests.length > 0 && (
-                        <span className="text-white text-[10px] font-medium ml-1 truncate max-w-[120px]">
-                          {sharedInterests.join(", ")}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  </>
-                ) : (
+              <div className={`absolute bg-zinc-100 dark:bg-zinc-900 rounded-lg overflow-hidden transition-[left,right,top,bottom] duration-200 ease-out ${
+                isCameraRPS
+                  ? splitLandscape ? "top-0 bottom-0 left-0 w-1/2" : "top-0 left-0 right-0 h-1/2"
+                  : compactVideo ? "top-0 bottom-0 left-0 right-1/2" : pipPinned ? pipSplitLandscape ? snapCorner.endsWith("left") ? "top-0 bottom-0 left-1/2 right-0" : "top-0 bottom-0 left-0 right-1/2" : snapCorner.startsWith("top") ? "top-1/2 bottom-0 left-0 right-0" : "top-0 bottom-1/2 left-0 right-0" : "inset-0" }`}>
+                <video
+                  ref={(el) => {
+                    remoteVideoRef.current = el;
+                    if (el && webrtc.remoteStream && el.srcObject !== webrtc.remoteStream) {
+                      el.srcObject = webrtc.remoteStream;
+                    }
+                  }}
+                  autoPlay
+                  playsInline
+                  className={`w-full h-full object-cover ${webrtc.remoteStream ? "" : "hidden"}`}
+                />
+                <canvas
+                  ref={remoteCanvasRef}
+                  className={`w-full h-full object-cover ${webrtc.remoteStream || !showFrozenFrame ? "hidden" : ""}`}
+                />
+                {(webrtc.remoteStream || showFrozenFrame) && partnerCountry && countryFlagUrl(partnerCountry) && (
+                  <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-1 z-10 flex items-center gap-1" title={partnerCountry}>
+                    <img src={countryFlagUrl(partnerCountry)} alt={partnerCountry} className="w-6 h-[15px] rounded-sm" />
+                    {sharedInterests.length > 0 && (
+                      <span className="text-white text-[10px] font-medium ml-1 truncate max-w-[120px]">
+                        {sharedInterests.join(", ")}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {!webrtc.remoteStream && !showFrozenFrame && (
                   <div className="w-full h-full flex items-center justify-center">
                     {status === "waiting" && (
                       <div className="text-center">
@@ -706,26 +762,29 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
 
               <div
                 data-pip
-                onPointerDown={compactVideo || pipPinned ? undefined : handleVideoDragStart}
-                onPointerMove={compactVideo || pipPinned ? undefined : handleVideoDragMove}
-                onPointerUp={compactVideo || pipPinned ? undefined : handleVideoDragEnd}
+                onPointerDown={compactVideo || pipPinned || isCameraRPS ? undefined : handleVideoDragStart}
+                onPointerMove={compactVideo || pipPinned || isCameraRPS ? undefined : handleVideoDragMove}
+                onPointerUp={compactVideo || pipPinned || isCameraRPS ? undefined : handleVideoDragEnd}
                 className={`absolute bg-zinc-800 rounded-lg overflow-hidden border-2 border-zinc-700 z-10 touch-none select-none transition-[left,right,top,bottom,width,height,transform,transform-origin] duration-200 ease-out ${
-                  compactVideo
-                    ? "top-0 bottom-0 right-0 w-1/2"
-                    : pipPinned
-                      ? pipSplitLandscape
-                        ? snapCorner.endsWith("left")
-                          ? "top-0 left-0 w-1/2 h-full"
-                          : "top-0 right-0 w-1/2 h-full"
-                        : snapCorner.startsWith("top")
-                          ? "top-0 left-0 w-full h-1/2"
-                          : "bottom-0 left-0 w-full h-1/2"
-                      : `${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 ${pipEnlarged ? "scale-[2.5]" : "scale-100"}`
+                  isCameraRPS
+                    ? splitLandscape ? "top-0 bottom-0 right-0 w-1/2" : "bottom-0 left-0 right-0 h-1/2"
+                    : compactVideo
+                      ? "top-0 bottom-0 right-0 w-1/2"
+                      : pipPinned
+                        ? pipSplitLandscape
+                          ? snapCorner.endsWith("left")
+                            ? "top-0 left-0 w-1/2 h-full"
+                            : "top-0 right-0 w-1/2 h-full"
+                          : snapCorner.startsWith("top")
+                            ? "top-0 left-0 w-full h-1/2"
+                            : "bottom-0 left-0 w-full h-1/2"
+                        : `${snapClass[snapCorner]} w-28 h-20 sm:w-36 sm:h-28 ${pipEnlarged ? "scale-[2.5]" : "scale-100"}`
                 }`}
               >
                 {webrtc.localStream ? (
                   <video
                     ref={(el) => {
+                      localVideoRef.current = el;
                       if (el && webrtc.localStream && el.srcObject !== webrtc.localStream) {
                         el.srcObject = webrtc.localStream;
                       }
@@ -741,7 +800,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     Loading...
                   </div>
                 )}
-                {!compactVideo && pipEnlarged && !pipPinned && (
+                {!compactVideo && !isCameraRPS && pipEnlarged && !pipPinned && (
                   <button
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => setPipPinned(true)}
@@ -751,7 +810,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     📌
                   </button>
                 )}
-                {!compactVideo && pipPinned && (
+                {!compactVideo && !isCameraRPS && pipPinned && (
                   <button
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => setPipPinned(false)}
@@ -762,6 +821,21 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                   </button>
                 )}
               </div>
+
+              {isCameraRPS && (
+                <RockPaperScissorsCamera
+                  key={gameKey}
+                  gameState={gameState}
+                  onStateChange={handleGameLocalState}
+                  onGameOver={handleGameOver}
+                  onGameEnd={handleGameEnd}
+                  localVideoRef={localVideoRef}
+                  landscape={splitLandscape}
+                  isHost={isGameHost}
+                  onSubmitChoice={handleRpsSubmitChoice}
+                  rpsResult={rpsResult}
+                />
+              )}
             </div>
           ) : (
             <div className="flex-1 flex flex-col lg:flex-row min-h-0">
@@ -908,15 +982,15 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
           </div>
         </div>
 
-        {mode === "video" && (showChat || gameType) && (
+        {mode === "video" && (showChat || (gameType && !isCameraRPS)) && (
           <div className={`w-full lg:w-96 lg:h-auto flex flex-col min-h-0 border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 ${
-            !gameType
+            !gameType || isCameraRPS
               ? "h-64"
               : showChat
                 ? gameType === "tic-tac-toe" ? "h-[calc(58%+10rem)]" : "h-[calc(45%+10rem)]"
                 : gameType === "tic-tac-toe" ? "h-[58%]" : "h-[45%]"
           }`}>
-            {gameType && (
+            {gameType && !isCameraRPS && (
               <div className={`flex-1 min-h-0 lg:flex-[5] ${showChat ? "border-b border-zinc-300 dark:border-zinc-700" : ""}`}>
                 <GamePanel
                   key={gameKey}
