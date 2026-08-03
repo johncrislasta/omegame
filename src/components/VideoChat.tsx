@@ -53,6 +53,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
 
   const dragRef = useRef<{ startX: number; startY: number; startLeft: number; startTop: number; moved: boolean } | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const partnerIdRef = useRef<string | null>(null);
   const pendingInviteRef = useRef<{ from: string; gameType: string } | null>(null);
@@ -726,6 +727,7 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                 {webrtc.localStream ? (
                   <video
                     ref={(el) => {
+                      localVideoRef.current = el;
                       if (el && webrtc.localStream && el.srcObject !== webrtc.localStream) {
                         el.srcObject = webrtc.localStream;
                       }
@@ -851,6 +853,8 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                   <GamePanel
                     key={gameKey}
                     gameType={gameType}
+                    mode={mode}
+                    localVideoRef={localVideoRef}
                     isHost={isGameHost}
                     gameState={gameState}
                     onLocalState={handleGameLocalState}
@@ -921,6 +925,8 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                 <GamePanel
                   key={gameKey}
                   gameType={gameType}
+                  mode={mode}
+                  localVideoRef={localVideoRef}
                   isHost={isGameHost}
                   gameState={gameState}
                   onLocalState={handleGameLocalState}
