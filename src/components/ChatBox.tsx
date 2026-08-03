@@ -9,6 +9,7 @@ interface ChatBoxProps {
   onSendMessage: (text: string) => void;
   onFeedback?: (type: string, category: string, isPositive: boolean) => void;
   incomingFeedback?: { type: string; isPositive: boolean } | null;
+  flyInline?: boolean;
 }
 
 const POSITIVE_FEEDBACK = [
@@ -35,7 +36,7 @@ interface FlyingEmoji {
 
 let flyingId = 0;
 
-export default function ChatBox({ messages, onSendMessage, onFeedback, incomingFeedback }: ChatBoxProps) {
+export default function ChatBox({ messages, onSendMessage, onFeedback, incomingFeedback, flyInline = true }: ChatBoxProps) {
   const [input, setInput] = useState("");
   const [activeFlyout, setActiveFlyout] = useState<"positive" | "negative" | null>(null);
   const [flyingEmojis, setFlyingEmojis] = useState<FlyingEmoji[]>([]);
@@ -68,21 +69,23 @@ export default function ChatBox({ messages, onSendMessage, onFeedback, incomingF
 
   const handleFeedback = useCallback((emoji: string, category: string, isPositive: boolean) => {
     onFeedback?.(emoji, category, isPositive);
+    if (!flyInline) return;
     const id = ++flyingId;
     setFlyingEmojis((prev) => [...prev, { id, emoji, isPositive }]);
     setTimeout(() => {
       setFlyingEmojis((prev) => prev.filter((f) => f.id !== id));
     }, 1000);
-  }, [onFeedback]);
+  }, [onFeedback, flyInline]);
 
   useEffect(() => {
     if (!incomingFeedback) return;
+    if (!flyInline) return;
     const id = ++flyingId;
     setFlyingEmojis((prev) => [...prev, { id, emoji: incomingFeedback.type, isPositive: incomingFeedback.isPositive }]);
     setTimeout(() => {
       setFlyingEmojis((prev) => prev.filter((f) => f.id !== id));
     }, 1000);
-  }, [incomingFeedback]);
+  }, [incomingFeedback, flyInline]);
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
