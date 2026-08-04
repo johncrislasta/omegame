@@ -95,6 +95,8 @@ export default function TicTacToeOverlay({
   const [activeCell, setActiveCell] = useState<number | null>(null);
   const [bigPadCell, setBigPadCell] = useState<number | null>(null);
   const [bigPadStrokes, setBigPadStrokes] = useState<Stroke[]>([]);
+  const [draftCell, setDraftCell] = useState<number | null>(null);
+  const [draftStrokes, setDraftStrokes] = useState<Stroke[]>([]);
 
   const roundRef = useRef(1);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -109,6 +111,7 @@ export default function TicTacToeOverlay({
   const rectRef = useRef<DOMRect | null>(null);
   const strokeRef = useRef<Stroke>([]);
   const downPosRef = useRef<{ x: number; y: number } | null>(null);
+  const draftCellRef = useRef<number | null>(null);
 
   const padDrawingRef = useRef(false);
   const padRectRef = useRef<DOMRect | null>(null);
@@ -148,6 +151,9 @@ export default function TicTacToeOverlay({
       setMyBoard(Array(9).fill(null));
       setRound(newRound);
       roundRef.current = newRound;
+      draftCellRef.current = null;
+      setDraftCell(null);
+      setDraftStrokes([]);
       onStateChangeRef.current({ board: Array(9).fill(null), round: newRound });
     }
   }, [opponentRound]);
@@ -197,6 +203,12 @@ export default function TicTacToeOverlay({
   const handleCellPointerDown =
     (index: number) => (e: ReactPointerEvent<SVGRectElement>) => {
       if (!isMyTurn || myBoard[index] !== null || roundOver) return;
+      if (draftCellRef.current !== null && draftCellRef.current !== index) return;
+      if (draftCellRef.current === null) {
+        draftCellRef.current = index;
+        setDraftCell(index);
+        setDraftStrokes([]);
+      }
       e.preventDefault();
       e.currentTarget.setPointerCapture(e.pointerId);
       drawingRef.current = true;
@@ -235,13 +247,15 @@ export default function TicTacToeOverlay({
     if (index === null || !down) return;
     const dist = Math.hypot(e.clientX - down.x, e.clientY - down.y);
     if (stroke.length <= 1 || dist < 10) {
-      if (isMyTurn && myBoard[index] === null && !roundOver) {
+      if (draftCellRef.current === null && isMyTurn && myBoard[index] === null && !roundOver) {
         setBigPadCell(index);
         setBigPadStrokes([]);
       }
       return;
     }
-    commitMove(index, [stroke]);
+    draftCellRef.current = index;
+    setDraftCell(index);
+    setDraftStrokes((prev) => [...prev, stroke]);
   };
 
   const padPoint = (e: ReactPointerEvent): Point => {
@@ -297,8 +311,34 @@ export default function TicTacToeOverlay({
     setMyBoard(Array(9).fill(null));
     setRound(newRound);
     roundRef.current = newRound;
+    draftCellRef.current = null;
+    setDraftCell(null);
+    setDraftStrokes([]);
     onStateChangeRef.current({ board: Array(9).fill(null), round: newRound });
   }, [round]);
+
+  const handleDraftClear = useCallback(() => {
+    setDraftStrokes([]);
+  }, []);
+
+  const handleDraftCancel = useCallback(() => {
+    drawingRef.current = false;
+    strokeRef.current = [];
+    draftCellRef.current = null;
+    setDraftCell(null);
+    setDraftStrokes([]);
+    setActiveStroke(null);
+    setActiveCell(null);
+  }, []);
+
+  const handleDraftConfirm = useCallback(() => {
+    const index = draftCellRef.current;
+    if (index === null || draftStrokes.length === 0) return;
+    commitMove(index, draftStrokes);
+    draftCellRef.current = null;
+    setDraftCell(null);
+    setDraftStrokes([]);
+  }, [draftStrokes, commitMove]);
 
   return (
     <>
@@ -335,9 +375,10 @@ export default function TicTacToeOverlay({
                 const col = i % 3;
                 const row = Math.floor(i / 3);
                 const mark = cell?.mark;
+                const isDraftCell = draftCell === i;
                 return (
                   <g key={i} transform={`translate(${col}, ${row})`}>
-                    {(activeCell === i || mark) && (
+                    {(activeCell === i || mark || isDraftCell) && (
                       <rect
                         x="0.03"
                         y="0.03"
@@ -369,6 +410,20 @@ export default function TicTacToeOverlay({
                         style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.45))" }}
                       />
                     ))}
+                    {isDraftCell &&
+                      draftStrokes.map((stroke, si) => (
+                        <polyline
+                          key={si}
+                          points={strokeToPoints(stroke)}
+                          fill="none"
+                          stroke={colorFor(myMark)}
+                          strokeWidth={6}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          vectorEffect="non-scaling-stroke"
+                          style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.45))" }}
+                        />
+                      ))}
                     {activeCell === i && activeStroke && (
                       <polyline
                         points={strokeToPoints(activeStroke)}
@@ -417,6 +472,30 @@ export default function TicTacToeOverlay({
               className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
             >
               Play Again
+            </button>
+          </div>
+        )}
+
+        {draftCell !== null && !roundOver && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-2">
+            <button
+              onClick={handleDraftClear}
+              className="px-3 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
+            >
+              Clear
+            </button>
+            <button
+              onClick={handleDraftCancel}
+              className="px-3 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDraftConfirm}
+              disabled={draftStrokes.length === 0}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
+            >
+              Done
             </button>
           </div>
         )}
