@@ -93,14 +93,11 @@ export default function TicTacToeOverlay({
   const [boardPx, setBoardPx] = useState(0);
   const [activeStroke, setActiveStroke] = useState<Stroke | null>(null);
   const [activeCell, setActiveCell] = useState<number | null>(null);
-  const [bigPadCell, setBigPadCell] = useState<number | null>(null);
-  const [bigPadStrokes, setBigPadStrokes] = useState<Stroke[]>([]);
   const [draftCell, setDraftCell] = useState<number | null>(null);
   const [draftStrokes, setDraftStrokes] = useState<Stroke[]>([]);
 
   const roundRef = useRef(1);
   const overlayRef = useRef<HTMLDivElement>(null);
-  const padSvgRef = useRef<SVGSVGElement>(null);
   const onStateChangeRef = useRef(onStateChange);
   useEffect(() => {
     onStateChangeRef.current = onStateChange;
@@ -112,9 +109,6 @@ export default function TicTacToeOverlay({
   const strokeRef = useRef<Stroke>([]);
   const downPosRef = useRef<{ x: number; y: number } | null>(null);
   const draftCellRef = useRef<number | null>(null);
-
-  const padDrawingRef = useRef(false);
-  const padRectRef = useRef<DOMRect | null>(null);
 
   useEffect(() => {
     const el = overlayRef.current;
@@ -204,11 +198,6 @@ export default function TicTacToeOverlay({
     (index: number) => (e: ReactPointerEvent<SVGRectElement>) => {
       if (!isMyTurn || myBoard[index] !== null || roundOver) return;
       if (draftCellRef.current !== null && draftCellRef.current !== index) return;
-      if (draftCellRef.current === null) {
-        draftCellRef.current = index;
-        setDraftCell(index);
-        setDraftStrokes([]);
-      }
       e.preventDefault();
       e.currentTarget.setPointerCapture(e.pointerId);
       drawingRef.current = true;
@@ -246,65 +235,11 @@ export default function TicTacToeOverlay({
     setActiveCell(null);
     if (index === null || !down) return;
     const dist = Math.hypot(e.clientX - down.x, e.clientY - down.y);
-    if (stroke.length <= 1 || dist < 10) {
-      if (draftCellRef.current === null && isMyTurn && myBoard[index] === null && !roundOver) {
-        setBigPadCell(index);
-        setBigPadStrokes([]);
-      }
-      return;
-    }
+    if (stroke.length <= 1 || dist < 10) return;
     draftCellRef.current = index;
     setDraftCell(index);
     setDraftStrokes((prev) => [...prev, stroke]);
   };
-
-  const padPoint = (e: ReactPointerEvent): Point => {
-    const rect = padRectRef.current!;
-    return {
-      x: clamp((e.clientX - rect.left) / rect.width, 0.02, 0.98),
-      y: clamp((e.clientY - rect.top) / rect.height, 0.02, 0.98),
-    };
-  };
-
-  const handlePadPointerDown = (e: ReactPointerEvent<SVGSVGElement>) => {
-    if (!padSvgRef.current) return;
-    e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    padDrawingRef.current = true;
-    padRectRef.current = e.currentTarget.getBoundingClientRect();
-    setBigPadStrokes((prev) => [...prev, [padPoint(e)]]);
-  };
-
-  const handlePadPointerMove = (e: ReactPointerEvent<SVGSVGElement>) => {
-    if (!padDrawingRef.current || !padRectRef.current) return;
-    const p = padPoint(e);
-    setBigPadStrokes((prev) => {
-      if (prev.length === 0) return prev;
-      const last = prev[prev.length - 1];
-      const prevPoint = last[last.length - 1];
-      if (prevPoint && Math.hypot(p.x - prevPoint.x, p.y - prevPoint.y) < 0.008) {
-        return prev;
-      }
-      return [...prev.slice(0, -1), [...last, p]];
-    });
-  };
-
-  const handlePadPointerUp = () => {
-    padDrawingRef.current = false;
-  };
-
-  const handlePadCancel = useCallback(() => {
-    padDrawingRef.current = false;
-    setBigPadCell(null);
-    setBigPadStrokes([]);
-  }, []);
-
-  const handlePadConfirm = useCallback(() => {
-    if (bigPadCell === null || bigPadStrokes.length === 0) return;
-    commitMove(bigPadCell, bigPadStrokes);
-    setBigPadCell(null);
-    setBigPadStrokes([]);
-  }, [bigPadCell, bigPadStrokes, commitMove]);
 
   const handlePlayAgain = useCallback(() => {
     const newRound = round + 1;
@@ -510,69 +445,6 @@ export default function TicTacToeOverlay({
           </button>
         </div>
       </div>
-
-      {bigPadCell !== null && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="text-white font-bold text-lg">
-                Draw your {myMark}
-              </span>
-              <span
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                  myMark === "X" ? "bg-blue-500" : "bg-red-500"
-                }`}
-              >
-                {myMark}
-              </span>
-            </div>
-            <svg
-              ref={padSvgRef}
-              viewBox="0 0 1 1"
-              className="w-full aspect-square touch-none bg-zinc-900 rounded-2xl"
-              style={{ touchAction: "none" }}
-              onPointerDown={handlePadPointerDown}
-              onPointerMove={handlePadPointerMove}
-              onPointerUp={handlePadPointerUp}
-              onPointerCancel={handlePadPointerUp}
-            >
-              {bigPadStrokes.map((stroke, si) => (
-                <polyline
-                  key={si}
-                  points={strokeToPoints(stroke)}
-                  fill="none"
-                  stroke={colorFor(myMark)}
-                  strokeWidth={8}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  vectorEffect="non-scaling-stroke"
-                />
-              ))}
-            </svg>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setBigPadStrokes([])}
-                className="flex-1 py-2.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded-xl transition-colors"
-              >
-                Clear
-              </button>
-              <button
-                onClick={handlePadCancel}
-                className="flex-1 py-2.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded-xl transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handlePadConfirm}
-                disabled={bigPadStrokes.length === 0}
-                className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
