@@ -29,10 +29,10 @@ const O_COLOR = "#ef4444";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-function computeWinner(board: (TttCell | null)[]): "X" | "O" | null {
-  for (const [a, b, c] of WINNING_LINES) {
-    const m = board[a]?.mark;
-    if (m && board[b]?.mark === m && board[c]?.mark === m) return m;
+function computeWinningLine(board: (TttCell | null)[]): number[] | null {
+  for (const line of WINNING_LINES) {
+    const m = board[line[0]]?.mark;
+    if (m && board[line[1]]?.mark === m && board[line[2]]?.mark === m) return line;
   }
   return null;
 }
@@ -42,6 +42,8 @@ function isBoardDraw(board: (TttCell | null)[]): boolean {
 }
 
 const colorFor = (mark: "X" | "O") => (mark === "X" ? X_COLOR : O_COLOR);
+
+const WIN_LINE_DURATION = 600;
 
 type RoundResult = "win" | "lose" | "draw";
 
@@ -200,6 +202,8 @@ export default function TicTacToeOverlay({
   const downPosRef = useRef<{ x: number; y: number } | null>(null);
   const dirtyRef = useRef(true);
   const rafRef = useRef(0);
+  const winLineRef = useRef<number[] | null>(null);
+  const winStartRef = useRef(0);
 
   /* offscreen canvas holding the "base" image (grid + committed + draft strokes).
      During active drawing we blit this + draw only the new segment. */
@@ -219,6 +223,15 @@ export default function TicTacToeOverlay({
 
   useEffect(() => {
     boardRef.current = effectiveBoard;
+    const line = computeWinningLine(effectiveBoard);
+    if (line) {
+      if (winLineRef.current === null) {
+        winLineRef.current = line;
+        winStartRef.current = performance.now();
+      }
+    } else {
+      winLineRef.current = null;
+    }
     dirtyRef.current = true;
   }, [effectiveBoard]);
 
@@ -233,7 +246,10 @@ export default function TicTacToeOverlay({
     dirtyRef.current = true;
   }, [draftCell]);
 
-  const winner = computeWinner(effectiveBoard);
+  const winningLine = computeWinningLine(effectiveBoard);
+  const winner = winningLine
+    ? (effectiveBoard[winningLine[0]]?.mark ?? null)
+    : null;
   const draw = !winner && isBoardDraw(effectiveBoard);
   const roundOver = winner !== null || draw;
 
@@ -325,6 +341,43 @@ export default function TicTacToeOverlay({
                   colorFor(myMark),
                   strokeLw,
                 );
+              }
+
+              /* 4) draw the animated win line through the winning cells */
+              const winLine = winLineRef.current;
+              if (winLine) {
+                const elapsed = performance.now() - winStartRef.current;
+                const progress = Math.min(1, elapsed / WIN_LINE_DURATION);
+                const pad = size * 0.04;
+                const inner = size - pad * 2;
+                const cellW = inner / 3;
+                const cellH = inner / 3;
+                const cx = (col: number) => pad + col * cellW + cellW / 2;
+                const cy = (row: number) => pad + row * cellH + cellH / 2;
+                const [a, , c] = winLine;
+                const sx = cx(a % 3);
+                const sy = cy(Math.floor(a / 3));
+                const ex = cx(c % 3);
+                const ey = cy(Math.floor(c / 3));
+                const winColor = boardRef.current[a]?.mark
+                  ? colorFor(boardRef.current[a]!.mark!)
+                  : colorFor(myMark);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                ctx.save();
+                ctx.strokeStyle = winColor;
+                ctx.lineWidth = Math.max(4, size * 0.02);
+                ctx.lineCap = "round";
+                ctx.shadowColor = "rgba(0,0,0,0.55)";
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 1;
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.lineTo(sx + (ex - sx) * progress, sy + (ey - sy) * progress);
+                ctx.stroke();
+                ctx.restore();
+
+                if (progress < 1) dirtyRef.current = true;
               }
             }
           }
