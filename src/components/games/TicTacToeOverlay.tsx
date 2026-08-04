@@ -360,23 +360,48 @@ export default function TicTacToeOverlay({
     [myBoard, myMark, round],
   );
 
-  const pointFromEvent = (e: ReactPointerEvent, rect: DOMRect): Point => ({
-    x: clamp((e.clientX - rect.left) / rect.width, 0.02, 0.98),
-    y: clamp((e.clientY - rect.top) / rect.height, 0.02, 0.98),
-  });
-
-  /* hit-test: which cell did the pointer land in? */
-  const cellFromPoint = (p: Point): number | null => {
+  /* board geometry shared by pointer mapping and rendering.
+     IMPORTANT: strokes are stored as 0–1 coordinates RELATIVE TO THE CELL,
+     matching how drawBase/active-stroke rendering consume them. */
+  const canvasCoords = (e: ReactPointerEvent, rect: DOMRect) => {
     const size = canvasSizeRef.current;
-    if (size <= 0) return null;
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * size,
+      y: ((e.clientY - rect.top) / rect.height) * size,
+    };
+  };
+
+  const cellMetrics = () => {
+    const size = canvasSizeRef.current;
     const pad = size * 0.04;
     const inner = size - pad * 2;
-    const cellW = inner / 3;
-    const cellH = inner / 3;
-    const px = p.x * size;
-    const py = p.y * size;
-    const col = Math.floor((px - pad) / cellW);
-    const row = Math.floor((py - pad) / cellH);
+    return { pad, cellW: inner / 3, cellH: inner / 3 };
+  };
+
+  /* map a pointer event to 0–1 coords within the given cell */
+  const pointInCell = (
+    e: ReactPointerEvent,
+    rect: DOMRect,
+    index: number,
+  ): Point => {
+    const { pad, cellW, cellH } = cellMetrics();
+    const col = index % 3;
+    const row = Math.floor(index / 3);
+    const { x, y } = canvasCoords(e, rect);
+    return {
+      x: clamp((x - pad - col * cellW) / cellW, 0.02, 0.98),
+      y: clamp((y - pad - row * cellH) / cellH, 0.02, 0.98),
+    };
+  };
+
+  /* hit-test: which cell did the pointer land in? */
+  const cellFromEvent = (e: ReactPointerEvent, rect: DOMRect): number | null => {
+    const size = canvasSizeRef.current;
+    if (size <= 0) return null;
+    const { pad, cellW, cellH } = cellMetrics();
+    const { x, y } = canvasCoords(e, rect);
+    const col = Math.floor((x - pad) / cellW);
+    const row = Math.floor((y - pad) / cellH);
     if (col < 0 || col > 2 || row < 0 || row > 2) return null;
     return row * 3 + col;
   };
@@ -384,8 +409,7 @@ export default function TicTacToeOverlay({
   const handlePointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!isMyTurn || roundOver) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const p = pointFromEvent(e, rect);
-    const index = cellFromPoint(p);
+    const index = cellFromEvent(e, rect);
     if (index === null || myBoard[index] !== null) return;
     if (draftCellRef.current !== null && draftCellRef.current !== index) return;
     e.preventDefault();
@@ -394,13 +418,15 @@ export default function TicTacToeOverlay({
     activeCellRef.current = index;
     rectRef.current = rect;
     downPosRef.current = { x: e.clientX, y: e.clientY };
-    activeStrokeRef.current = [pointFromEvent(e, rect)];
+    activeStrokeRef.current = [pointInCell(e, rect, index)];
     dirtyRef.current = true;
   };
 
   const handlePointerMove = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!drawingRef.current || !rectRef.current) return;
-    const p = pointFromEvent(e, rectRef.current);
+    const index = activeCellRef.current;
+    if (index === null) return;
+    const p = pointInCell(e, rectRef.current, index);
     const stroke = activeStrokeRef.current;
     const prev = stroke[stroke.length - 1];
     if (!prev || Math.hypot(p.x - prev.x, p.y - prev.y) >= 0.02) {
