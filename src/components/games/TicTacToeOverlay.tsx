@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 
 type Point = { x: number; y: number };
@@ -32,14 +32,12 @@ const WINNING_LINES = [
 const X_COLOR = "#3b82f6";
 const O_COLOR = "#ef4444";
 
-const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 function computeWinner(board: (TttCell | null)[]): "X" | "O" | null {
   for (const [a, b, c] of WINNING_LINES) {
     const m = board[a]?.mark;
-    if (m && board[b]?.mark === m && board[c]?.mark === m) {
-      return m;
-    }
+    if (m && board[b]?.mark === m && board[c]?.mark === m) return m;
   }
   return null;
 }
@@ -48,39 +46,172 @@ function isBoardDraw(board: (TttCell | null)[]): boolean {
   return board.every((cell) => cell !== null);
 }
 
-function wavyPoints(x1: number, y1: number, x2: number, y2: number): string {
+const colorFor = (mark: "X" | "O") => (mark === "X" ? X_COLOR : O_COLOR);
+
+type RoundResult = "win" | "lose" | "draw";
+
+/* ── canvas drawing helpers ────────────────────────────────── */
+
+function drawWavyLine(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+) {
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.hypot(dx, dy);
   const nx = -dy / len;
   const ny = dx / len;
   const segs = 7;
-  const pts: string[] = [`${x1},${y1}`];
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
   for (let i = 1; i <= segs; i++) {
     const t = i / segs;
-    const wobble = Math.sin(t * Math.PI * 3) * 0.035;
-    pts.push(
-      `${(x1 + dx * t + nx * wobble).toFixed(3)},${(y1 + dy * t + ny * wobble).toFixed(3)}`
-    );
+    const wobble = Math.sin(t * Math.PI * 3) * 0.035 * len;
+    ctx.lineTo(x1 + dx * t + nx * wobble, y1 + dy * t + ny * wobble);
   }
-  pts.push(`${x2},${y2}`);
-  return pts.join(" ");
+  ctx.stroke();
 }
 
-const HASH_LINES = [
-  wavyPoints(1, 0.12, 1, 2.88),
-  wavyPoints(2, 0.12, 2, 2.88),
-  wavyPoints(0.12, 1, 2.88, 1),
-  wavyPoints(0.12, 2, 2.88, 2),
-];
-
-function strokeToPoints(stroke: Stroke): string {
-  return stroke.map((p) => `${p.x.toFixed(3)},${p.y.toFixed(3)}`).join(" ");
+function drawStroke(
+  ctx: CanvasRenderingContext2D,
+  stroke: Stroke,
+  color: string,
+  lineWidth: number,
+) {
+  if (stroke.length < 2) return;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.shadowColor = "rgba(0,0,0,0.45)";
+  ctx.shadowBlur = 2;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 1;
+  ctx.beginPath();
+  ctx.moveTo(stroke[0].x, stroke[0].y);
+  for (let i = 1; i < stroke.length; i++) {
+    ctx.lineTo(stroke[i].x, stroke[i].y);
+  }
+  ctx.stroke();
+  ctx.restore();
 }
 
-const colorFor = (mark: "X" | "O") => (mark === "X" ? X_COLOR : O_COLOR);
+function drawBoard(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  board: (TttCell | null)[],
+  myMark: "X" | "O",
+  activeCell: number | null,
+  draftCell: number | null,
+  draftStrokes: Stroke[],
+  activeStroke: Stroke,
+) {
+  ctx.clearRect(0, 0, w, h);
 
-type RoundResult = "win" | "lose" | "draw";
+  const pad = w * 0.04;
+  const inner = w - pad * 2;
+  const cellW = inner / 3;
+  const cellH = inner / 3;
+
+  const toX = (col: number) => pad + col * cellW;
+  const toY = (row: number) => pad + row * cellH;
+
+  /* cell highlights */
+  for (let i = 0; i < 9; i++) {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const cell = board[i];
+    const isDraft = draftCell === i;
+    if (activeCell === i || cell || isDraft) {
+      const fill = cell ? colorFor(cell.mark) : colorFor(myMark);
+      ctx.save();
+      ctx.globalAlpha = 0.15;
+      ctx.fillStyle = fill;
+      const rx = 6;
+      const cx = toX(col) + 4;
+      const cy = toY(row) + 4;
+      const cw = cellW - 8;
+      const ch = cellH - 8;
+      ctx.beginPath();
+      ctx.moveTo(cx + rx, cy);
+      ctx.arcTo(cx + cw, cy, cx + cw, cy + ch, rx);
+      ctx.arcTo(cx + cw, cy + ch, cx, cy + ch, rx);
+      ctx.arcTo(cx, cy + ch, cx, cy, rx);
+      ctx.arcTo(cx, cy, cx + cw, cy, rx);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /* wavy hash lines */
+  ctx.save();
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = Math.max(3, w * 0.012);
+  ctx.lineCap = "round";
+  ctx.shadowColor = "rgba(0,0,0,0.55)";
+  ctx.shadowBlur = 3;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 1;
+  drawWavyLine(ctx, toX(1), toY(0), toX(1), toY(3));
+  drawWavyLine(ctx, toX(2), toY(0), toX(2), toY(3));
+  drawWavyLine(ctx, toX(0), toY(1), toX(3), toY(1));
+  drawWavyLine(ctx, toX(0), toY(2), toX(3), toY(2));
+  ctx.restore();
+
+  const strokeLw = Math.max(3, w * 0.015);
+
+  /* committed strokes */
+  for (let i = 0; i < 9; i++) {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const cell = board[i];
+    if (!cell) continue;
+    const ox = toX(col);
+    const oy = toY(row);
+    for (const s of cell.strokes) {
+      const mapped: Stroke = s.map((p) => ({
+        x: ox + p.x * cellW,
+        y: oy + p.y * cellH,
+      }));
+      drawStroke(ctx, mapped, colorFor(cell.mark), strokeLw);
+    }
+  }
+
+  /* draft strokes */
+  if (draftCell !== null && draftStrokes.length > 0) {
+    const col = draftCell % 3;
+    const row = Math.floor(draftCell / 3);
+    const ox = toX(col);
+    const oy = toY(row);
+    for (const s of draftStrokes) {
+      const mapped: Stroke = s.map((p) => ({
+        x: ox + p.x * cellW,
+        y: oy + p.y * cellH,
+      }));
+      drawStroke(ctx, mapped, colorFor(myMark), strokeLw);
+    }
+  }
+
+  /* active stroke (being drawn right now) */
+  if (activeCell !== null && activeStroke.length >= 2) {
+    const col = activeCell % 3;
+    const row = Math.floor(activeCell / 3);
+    const ox = toX(col);
+    const oy = toY(row);
+    const mapped: Stroke = activeStroke.map((p) => ({
+      x: ox + p.x * cellW,
+      y: oy + p.y * cellH,
+    }));
+    drawStroke(ctx, mapped, colorFor(myMark), strokeLw);
+  }
+}
+
+/* ── component ─────────────────────────────────────────────── */
 
 export default function TicTacToeOverlay({
   isPlayerX,
@@ -90,62 +221,122 @@ export default function TicTacToeOverlay({
 }: TicTacToeOverlayProps) {
   const [myBoard, setMyBoard] = useState<(TttCell | null)[]>(Array(9).fill(null));
   const [round, setRound] = useState(1);
-  const [boardPx, setBoardPx] = useState(0);
-  const [activeCell, setActiveCell] = useState<number | null>(null);
   const [draftCell, setDraftCell] = useState<number | null>(null);
   const [draftStrokes, setDraftStrokes] = useState<Stroke[]>([]);
 
   const roundRef = useRef(1);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasSizeRef = useRef(0);
   const onStateChangeRef = useRef(onStateChange);
-  useEffect(() => {
-    onStateChangeRef.current = onStateChange;
-  }, [onStateChange]);
+  useEffect(() => { onStateChangeRef.current = onStateChange; }, [onStateChange]);
 
-  const drawingRef = useRef(false);
+  /* mutable refs for the render loop — no React re-renders during drawing */
+  const boardRef = useRef<(TttCell | null)[]>(Array(9).fill(null));
   const activeCellRef = useRef<number | null>(null);
-  const rectRef = useRef<DOMRect | null>(null);
-  const strokeRef = useRef<Stroke>([]);
-  const downPosRef = useRef<{ x: number; y: number } | null>(null);
   const draftCellRef = useRef<number | null>(null);
-  const activeLineRef = useRef<SVGPolylineElement>(null);
+  const draftStrokesRef = useRef<Stroke[]>([]);
+  const activeStrokeRef = useRef<Stroke>([]);
+  const drawingRef = useRef(false);
+  const rectRef = useRef<DOMRect | null>(null);
+  const downPosRef = useRef<{ x: number; y: number } | null>(null);
+  const dirtyRef = useRef(true);
+  const rafRef = useRef(0);
 
+  const myMark = isPlayerX
+    ? round % 2 === 1 ? "X" : "O"
+    : round % 2 === 1 ? "O" : "X";
+  const opponentBoard = (gameState.board as (TttCell | null)[]) ?? null;
+  const opponentRound = (gameState.round as number) ?? 1;
+
+  /* sync board state into ref */
+  const effectiveBoard = (() => {
+    if (opponentRound !== round) return Array(9).fill(null) as (TttCell | null)[];
+    return myBoard.map((cell, i) => cell || opponentBoard?.[i] || null);
+  })();
+
+  useEffect(() => {
+    boardRef.current = effectiveBoard;
+    dirtyRef.current = true;
+  }, [effectiveBoard]);
+
+  const winner = computeWinner(effectiveBoard);
+  const draw = !winner && isBoardDraw(effectiveBoard);
+  const roundOver = winner !== null || draw;
+
+  const roundResult: RoundResult | null = (() => {
+    if (!roundOver) return null;
+    if (draw) return "draw";
+    return winner === myMark ? "win" : "lose";
+  })();
+
+  const mergedXCount = effectiveBoard.filter((c) => c?.mark === "X").length;
+  const mergedOCount = effectiveBoard.filter((c) => c?.mark === "O").length;
+  const isMyTurn =
+    !roundOver &&
+    (myMark === "X" ? mergedXCount === mergedOCount : mergedXCount === mergedOCount + 1);
+
+  /* size the canvas */
   useEffect(() => {
     const el = overlayRef.current;
     if (!el) return;
     const ro = new ResizeObserver(() => {
-      setBoardPx(
-        Math.max(
-          140,
-          Math.min(
-            Math.floor(el.clientWidth * 0.6),
-            Math.floor(el.clientHeight * 0.55),
-            640
-          )
+      const size = Math.max(
+        140,
+        Math.min(
+          Math.floor(el.clientWidth * 0.6),
+          Math.floor(el.clientHeight * 0.55),
+          640
         )
       );
+      canvasSizeRef.current = size;
+      dirtyRef.current = true;
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
+  /* rAF render loop */
   useEffect(() => {
-    const el = activeLineRef.current;
-    if (el && activeCell !== null) {
-      el.setAttribute("points", strokeToPoints(strokeRef.current));
-    }
-  }, [activeCell]);
+    const loop = () => {
+      if (dirtyRef.current) {
+        dirtyRef.current = false;
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const size = canvasSizeRef.current;
+          if (size > 0) {
+            const dpr = window.devicePixelRatio || 1;
+            if (canvas.width !== size * dpr || canvas.height !== size * dpr) {
+              canvas.width = size * dpr;
+              canvas.height = size * dpr;
+            }
+            canvas.style.width = `${size}px`;
+            canvas.style.height = `${size}px`;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+              drawBoard(
+                ctx,
+                size,
+                size,
+                boardRef.current,
+                myMark,
+                activeCellRef.current,
+                draftCellRef.current,
+                draftStrokesRef.current,
+                activeStrokeRef.current,
+              );
+            }
+          }
+        }
+      }
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [myMark]);
 
-  const myMark = isPlayerX
-    ? round % 2 === 1
-      ? "X"
-      : "O"
-    : round % 2 === 1
-      ? "O"
-      : "X";
-  const opponentBoard = (gameState.board as (TttCell | null)[]) ?? null;
-  const opponentRound = (gameState.round as number) ?? 1;
-
+  /* when opponent round advances, reset */
   useEffect(() => {
     if (opponentRound > roundRef.current) {
       const newRound = opponentRound;
@@ -159,30 +350,6 @@ export default function TicTacToeOverlay({
     }
   }, [opponentRound]);
 
-  const effectiveBoard = useMemo<(TttCell | null)[]>(() => {
-    if (opponentRound !== round) return Array(9).fill(null);
-    return myBoard.map((cell, i) => cell || opponentBoard?.[i] || null);
-  }, [myBoard, opponentBoard, round, opponentRound]);
-
-  const winner = useMemo(() => computeWinner(effectiveBoard), [effectiveBoard]);
-  const draw = useMemo(
-    () => !winner && isBoardDraw(effectiveBoard),
-    [winner, effectiveBoard]
-  );
-  const roundOver = winner !== null || draw;
-
-  const roundResult: RoundResult | null = useMemo(() => {
-    if (!roundOver) return null;
-    if (draw) return "draw";
-    return winner === myMark ? "win" : "lose";
-  }, [roundOver, winner, myMark, draw]);
-
-  const mergedXCount = effectiveBoard.filter((c) => c?.mark === "X").length;
-  const mergedOCount = effectiveBoard.filter((c) => c?.mark === "O").length;
-  const isMyTurn =
-    !roundOver &&
-    (myMark === "X" ? mergedXCount === mergedOCount : mergedXCount === mergedOCount + 1);
-
   const commitMove = useCallback(
     (index: number, strokes: Stroke[]) => {
       const newBoard = [...myBoard];
@@ -193,54 +360,68 @@ export default function TicTacToeOverlay({
     [myBoard, myMark, round]
   );
 
-  const pointFromEvent = (
-    e: ReactPointerEvent,
-    rect: DOMRect
-  ): Point => ({
+  const pointFromEvent = (e: ReactPointerEvent, rect: DOMRect): Point => ({
     x: clamp((e.clientX - rect.left) / rect.width, 0.02, 0.98),
     y: clamp((e.clientY - rect.top) / rect.height, 0.02, 0.98),
   });
 
-  const handleCellPointerDown =
-    (index: number) => (e: ReactPointerEvent<SVGRectElement>) => {
-      if (!isMyTurn || myBoard[index] !== null || roundOver) return;
-      if (draftCellRef.current !== null && draftCellRef.current !== index) return;
-      e.preventDefault();
-      e.currentTarget.setPointerCapture(e.pointerId);
-      drawingRef.current = true;
-      activeCellRef.current = index;
-      rectRef.current = e.currentTarget.getBoundingClientRect();
-      downPosRef.current = { x: e.clientX, y: e.clientY };
-      strokeRef.current = [pointFromEvent(e, rectRef.current)];
-      setActiveCell(index);
-    };
+  /* hit-test: which cell did the pointer land in? */
+  const cellFromPoint = (p: Point): number | null => {
+    const size = canvasSizeRef.current;
+    if (size <= 0) return null;
+    const pad = size * 0.04;
+    const inner = size - pad * 2;
+    const cellW = inner / 3;
+    const cellH = inner / 3;
+    const px = p.x * size;
+    const py = p.y * size;
+    const col = Math.floor((px - pad) / cellW);
+    const row = Math.floor((py - pad) / cellH);
+    if (col < 0 || col > 2 || row < 0 || row > 2) return null;
+    return row * 3 + col;
+  };
 
-  const handleBoardPointerMove = (e: ReactPointerEvent<SVGSVGElement>) => {
+  const handlePointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!isMyTurn || roundOver) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const p = pointFromEvent(e, rect);
+    const index = cellFromPoint(p);
+    if (index === null || myBoard[index] !== null) return;
+    if (draftCellRef.current !== null && draftCellRef.current !== index) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drawingRef.current = true;
+    activeCellRef.current = index;
+    rectRef.current = rect;
+    downPosRef.current = { x: e.clientX, y: e.clientY };
+    activeStrokeRef.current = [pointFromEvent(e, rect)];
+    dirtyRef.current = true;
+  };
+
+  const handlePointerMove = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!drawingRef.current || !rectRef.current) return;
     const p = pointFromEvent(e, rectRef.current);
-    const prev = strokeRef.current[strokeRef.current.length - 1];
+    const stroke = activeStrokeRef.current;
+    const prev = stroke[stroke.length - 1];
     if (!prev || Math.hypot(p.x - prev.x, p.y - prev.y) >= 0.02) {
-      if (strokeRef.current.length < 500) {
-        strokeRef.current.push(p);
-        activeLineRef.current?.setAttribute(
-          "points",
-          strokeToPoints(strokeRef.current)
-        );
+      if (stroke.length < 500) {
+        stroke.push(p);
+        dirtyRef.current = true;
       }
     }
   };
 
-  const handleBoardPointerUp = (e: ReactPointerEvent<SVGSVGElement>) => {
+  const handlePointerUp = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!drawingRef.current) return;
     const index = activeCellRef.current;
-    const stroke = strokeRef.current;
+    const stroke = activeStrokeRef.current;
     const down = downPosRef.current;
     drawingRef.current = false;
-    strokeRef.current = [];
+    activeStrokeRef.current = [];
     rectRef.current = null;
     activeCellRef.current = null;
     downPosRef.current = null;
-    setActiveCell(null);
+    dirtyRef.current = true;
     if (index === null || !down) return;
     const dist = Math.hypot(e.clientX - down.x, e.clientY - down.y);
     if (stroke.length <= 1 || dist < 10) return;
@@ -266,11 +447,11 @@ export default function TicTacToeOverlay({
 
   const handleDraftCancel = useCallback(() => {
     drawingRef.current = false;
-    strokeRef.current = [];
+    activeStrokeRef.current = [];
     draftCellRef.current = null;
     setDraftCell(null);
     setDraftStrokes([]);
-    setActiveCell(null);
+    dirtyRef.current = true;
   }, []);
 
   const handleDraftConfirm = useCallback(() => {
@@ -288,103 +469,19 @@ export default function TicTacToeOverlay({
         ref={overlayRef}
         className="absolute inset-0 z-10 pointer-events-none select-none"
       >
-        {boardPx > 0 && (
-          <div className="w-full h-full flex items-center justify-center">
-            <svg
-              viewBox="0 0 3 3"
-              width={boardPx}
-              height={boardPx}
-              className="touch-none"
-              style={{ touchAction: "none", pointerEvents: "auto" }}
-              onPointerMove={handleBoardPointerMove}
-              onPointerUp={handleBoardPointerUp}
-              onPointerCancel={handleBoardPointerUp}
-            >
-              {HASH_LINES.map((pts, i) => (
-                <polyline
-                  key={i}
-                  points={pts}
-                  fill="none"
-                  stroke="white"
-                  strokeWidth={5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  vectorEffect="non-scaling-stroke"
-                  style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.55))" }}
-                />
-              ))}
-              {effectiveBoard.map((cell, i) => {
-                const col = i % 3;
-                const row = Math.floor(i / 3);
-                const mark = cell?.mark;
-                const isDraftCell = draftCell === i;
-                return (
-                  <g key={i} transform={`translate(${col}, ${row})`}>
-                    {(activeCell === i || mark || isDraftCell) && (
-                      <rect
-                        x="0.03"
-                        y="0.03"
-                        width="0.94"
-                        height="0.94"
-                        rx="0.07"
-                        fill={mark ? colorFor(mark) : colorFor(myMark)}
-                        opacity={0.15}
-                      />
-                    )}
-                    <rect
-                      x="0"
-                      y="0"
-                      width="1"
-                      height="1"
-                      fill="transparent"
-                      onPointerDown={mark ? undefined : handleCellPointerDown(i)}
-                    />
-                    {cell?.strokes.map((stroke, si) => (
-                      <polyline
-                        key={si}
-                        points={strokeToPoints(stroke)}
-                        fill="none"
-                        stroke={colorFor(cell.mark)}
-                        strokeWidth={6}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        vectorEffect="non-scaling-stroke"
-                        style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.45))" }}
-                      />
-                    ))}
-                    {isDraftCell &&
-                      draftStrokes.map((stroke, si) => (
-                        <polyline
-                          key={si}
-                          points={strokeToPoints(stroke)}
-                          fill="none"
-                          stroke={colorFor(myMark)}
-                          strokeWidth={6}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          vectorEffect="non-scaling-stroke"
-                          style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.45))" }}
-                        />
-                      ))}
-                    {activeCell === i && (
-                      <polyline
-                        ref={activeLineRef}
-                        points=""
-                        fill="none"
-                        stroke={colorFor(myMark)}
-                        strokeWidth={6}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        )}
+        <div className="w-full h-full flex items-center justify-center">
+          <canvas
+            ref={canvasRef}
+            className="touch-none"
+            style={{ touchAction: "none", pointerEvents: "auto" }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+          />
+        </div>
 
+        {/* turn / result HUD */}
         <div className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%]">
           <div
             className={`px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs sm:text-sm font-semibold text-center shadow-lg ${
@@ -407,8 +504,15 @@ export default function TicTacToeOverlay({
           </div>
         </div>
 
+        {/* roundOver actions */}
         {roundOver && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-2">
+            <button
+              onClick={onGameEnd}
+              className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
+            >
+              Close Game
+            </button>
             <button
               onClick={handlePlayAgain}
               className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
@@ -418,6 +522,7 @@ export default function TicTacToeOverlay({
           </div>
         )}
 
+        {/* draft toolbar */}
         {draftCell !== null && !roundOver && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-2">
             <button
@@ -442,6 +547,7 @@ export default function TicTacToeOverlay({
           </div>
         )}
 
+        {/* close button — always visible */}
         <div className="absolute top-3 right-3 pointer-events-auto">
           <button
             onClick={onGameEnd}
