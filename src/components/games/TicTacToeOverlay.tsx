@@ -495,7 +495,7 @@ export default function TicTacToeOverlay({
         ref={overlayRef}
         className="absolute inset-0 z-20 pointer-events-none select-none"
       >
-        <div className="w-full h-full flex items-center justify-center">
+        <div className="w-full h-full flex flex-col items-center justify-center">
           <canvas
             ref={canvasRef}
             className="touch-none"
@@ -505,6 +505,15 @@ export default function TicTacToeOverlay({
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
           />
+          <div className="mt-3 pointer-events-auto">
+            <button
+              onClick={onGameEnd}
+              title="Close game"
+              className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
+            >
+              Close game
+            </button>
+          </div>
         </div>
 
         {/* turn / result HUD */}
@@ -533,12 +542,6 @@ export default function TicTacToeOverlay({
         {/* roundOver actions */}
         {roundOver && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-2">
-            <button
-              onClick={onGameEnd}
-              className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
-            >
-              Close Game
-            </button>
             <button
               onClick={handlePlayAgain}
               className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
@@ -572,17 +575,6 @@ export default function TicTacToeOverlay({
             </button>
           </div>
         )}
-
-        {/* close button — always visible */}
-        <div className="absolute top-3 right-3 pointer-events-auto">
-          <button
-            onClick={onGameEnd}
-            title="Close game"
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white text-sm transition-colors"
-          >
-            ✕
-          </button>
-        </div>
       </div>
     </>
   );
