@@ -496,24 +496,51 @@ export default function TicTacToeOverlay({
         className="absolute inset-0 z-20 pointer-events-none select-none"
       >
         <div className="w-full h-full flex flex-col items-center justify-center">
-          <canvas
-            ref={canvasRef}
-            className="touch-none"
-            style={{ touchAction: "none", pointerEvents: "auto" }}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-          />
-          <div className="mt-3 pointer-events-auto">
-            <button
-              onClick={onGameEnd}
-              title="Close game"
-              className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
-            >
-              Close game
-            </button>
+          <div className="relative">
+            <canvas
+              ref={canvasRef}
+              className="touch-none"
+              style={{ touchAction: "none", pointerEvents: "auto" }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+            />
+            <div className="absolute -top-2 -right-2 pointer-events-auto">
+              <button
+                onClick={onGameEnd}
+                title="Close game"
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white text-sm shadow-lg transition-colors"
+              >
+                ✕
+              </button>
+            </div>
           </div>
+
+          {/* draft toolbar */}
+          {draftCell !== null && !roundOver && (
+            <div className="mt-3 pointer-events-auto flex items-center gap-2">
+              <button
+                onClick={handleDraftClear}
+                className="px-3 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
+              >
+                Clear
+              </button>
+              <button
+                onClick={handleDraftCancel}
+                className="px-3 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDraftConfirm}
+                disabled={draftStrokes.length === 0}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          )}
         </div>
 
         {/* turn / result HUD */}
@@ -547,31 +574,6 @@ export default function TicTacToeOverlay({
               className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
             >
               Play Again
-            </button>
-          </div>
-        )}
-
-        {/* draft toolbar */}
-        {draftCell !== null && !roundOver && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-2">
-            <button
-              onClick={handleDraftClear}
-              className="px-3 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
-            >
-              Clear
-            </button>
-            <button
-              onClick={handleDraftCancel}
-              className="px-3 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleDraftConfirm}
-              disabled={draftStrokes.length === 0}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
-            >
-              Done
             </button>
           </div>
         )}
