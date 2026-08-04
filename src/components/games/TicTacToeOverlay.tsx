@@ -19,14 +19,9 @@ interface TicTacToeOverlayProps {
 }
 
 const WINNING_LINES = [
-  [0, 1, 2],
-  [3, 4, 5],
-  [6, 7, 8],
-  [0, 3, 6],
-  [1, 4, 7],
-  [2, 5, 8],
-  [0, 4, 8],
-  [2, 4, 6],
+  [0, 1, 2], [3, 4, 5], [6, 7, 8],
+  [0, 3, 6], [1, 4, 7], [2, 5, 8],
+  [0, 4, 8], [2, 4, 6],
 ];
 
 const X_COLOR = "#3b82f6";
@@ -52,16 +47,16 @@ type RoundResult = "win" | "lose" | "draw";
 
 /* ── canvas drawing helpers ────────────────────────────────── */
 
-function drawStroke(
+function drawStrokePath(
   ctx: CanvasRenderingContext2D,
   stroke: Stroke,
   color: string,
-  lineWidth: number,
+  lw: number,
 ) {
   if (stroke.length < 2) return;
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.lineWidth = lineWidth;
+  ctx.lineWidth = lw;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.shadowColor = "rgba(0,0,0,0.45)";
@@ -70,31 +65,26 @@ function drawStroke(
   ctx.shadowOffsetY = 1;
   ctx.beginPath();
   ctx.moveTo(stroke[0].x, stroke[0].y);
-  for (let i = 1; i < stroke.length; i++) {
-    ctx.lineTo(stroke[i].x, stroke[i].y);
-  }
+  for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x, stroke[i].y);
   ctx.stroke();
   ctx.restore();
 }
 
-function drawBoard(
+/** Draw the static board (grid + committed strokes + draft strokes) into a target ctx. */
+function drawBase(
   ctx: CanvasRenderingContext2D,
   w: number,
-  h: number,
   board: (TttCell | null)[],
   myMark: "X" | "O",
-  activeCell: number | null,
   draftCell: number | null,
   draftStrokes: Stroke[],
-  activeStroke: Stroke,
 ) {
-  ctx.clearRect(0, 0, w, h);
+  ctx.clearRect(0, 0, w, w);
 
   const pad = w * 0.04;
   const inner = w - pad * 2;
   const cellW = inner / 3;
   const cellH = inner / 3;
-
   const toX = (col: number) => pad + col * cellW;
   const toY = (row: number) => pad + row * cellH;
 
@@ -104,7 +94,7 @@ function drawBoard(
     const row = Math.floor(i / 3);
     const cell = board[i];
     const isDraft = draftCell === i;
-    if (activeCell === i || cell || isDraft) {
+    if (cell || isDraft) {
       const fill = cell ? colorFor(cell.mark) : colorFor(myMark);
       ctx.save();
       ctx.globalAlpha = 0.15;
@@ -153,11 +143,12 @@ function drawBoard(
     const ox = toX(col);
     const oy = toY(row);
     for (const s of cell.strokes) {
-      const mapped: Stroke = s.map((p) => ({
-        x: ox + p.x * cellW,
-        y: oy + p.y * cellH,
-      }));
-      drawStroke(ctx, mapped, colorFor(cell.mark), strokeLw);
+      drawStrokePath(
+        ctx,
+        s.map((p) => ({ x: ox + p.x * cellW, y: oy + p.y * cellH })),
+        colorFor(cell.mark),
+        strokeLw,
+      );
     }
   }
 
@@ -168,25 +159,13 @@ function drawBoard(
     const ox = toX(col);
     const oy = toY(row);
     for (const s of draftStrokes) {
-      const mapped: Stroke = s.map((p) => ({
-        x: ox + p.x * cellW,
-        y: oy + p.y * cellH,
-      }));
-      drawStroke(ctx, mapped, colorFor(myMark), strokeLw);
+      drawStrokePath(
+        ctx,
+        s.map((p) => ({ x: ox + p.x * cellW, y: oy + p.y * cellH })),
+        colorFor(myMark),
+        strokeLw,
+      );
     }
-  }
-
-  /* active stroke (being drawn right now) */
-  if (activeCell !== null && activeStroke.length >= 2) {
-    const col = activeCell % 3;
-    const row = Math.floor(activeCell / 3);
-    const ox = toX(col);
-    const oy = toY(row);
-    const mapped: Stroke = activeStroke.map((p) => ({
-      x: ox + p.x * cellW,
-      y: oy + p.y * cellH,
-    }));
-    drawStroke(ctx, mapped, colorFor(myMark), strokeLw);
   }
 }
 
@@ -210,7 +189,7 @@ export default function TicTacToeOverlay({
   const onStateChangeRef = useRef(onStateChange);
   useEffect(() => { onStateChangeRef.current = onStateChange; }, [onStateChange]);
 
-  /* mutable refs for the render loop — no React re-renders during drawing */
+  /* mutable refs for the hot path — no React re-renders during drawing */
   const boardRef = useRef<(TttCell | null)[]>(Array(9).fill(null));
   const activeCellRef = useRef<number | null>(null);
   const draftCellRef = useRef<number | null>(null);
@@ -221,6 +200,10 @@ export default function TicTacToeOverlay({
   const downPosRef = useRef<{ x: number; y: number } | null>(null);
   const dirtyRef = useRef(true);
   const rafRef = useRef(0);
+
+  /* offscreen canvas holding the "base" image (grid + committed + draft strokes).
+     During active drawing we blit this + draw only the new segment. */
+  const baseCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const myMark = isPlayerX
     ? round % 2 === 1 ? "X" : "O"
@@ -238,6 +221,17 @@ export default function TicTacToeOverlay({
     boardRef.current = effectiveBoard;
     dirtyRef.current = true;
   }, [effectiveBoard]);
+
+  /* sync draft strokes + draft cell into refs */
+  useEffect(() => {
+    draftStrokesRef.current = draftStrokes;
+    dirtyRef.current = true;
+  }, [draftStrokes]);
+
+  useEffect(() => {
+    draftCellRef.current = draftCell;
+    dirtyRef.current = true;
+  }, [draftCell]);
 
   const winner = computeWinner(effectiveBoard);
   const draw = !winner && isBoardDraw(effectiveBoard);
@@ -265,8 +259,8 @@ export default function TicTacToeOverlay({
         Math.min(
           Math.floor(el.clientWidth * 0.6),
           Math.floor(el.clientHeight * 0.55),
-          640
-        )
+          640,
+        ),
       );
       canvasSizeRef.current = size;
       dirtyRef.current = true;
@@ -285,26 +279,53 @@ export default function TicTacToeOverlay({
           const size = canvasSizeRef.current;
           if (size > 0) {
             const dpr = window.devicePixelRatio || 1;
-            if (canvas.width !== size * dpr || canvas.height !== size * dpr) {
-              canvas.width = size * dpr;
-              canvas.height = size * dpr;
+            const px = Math.ceil(size * dpr);
+            if (canvas.width !== px || canvas.height !== px) {
+              canvas.width = px;
+              canvas.height = px;
             }
             canvas.style.width = `${size}px`;
             canvas.style.height = `${size}px`;
             const ctx = canvas.getContext("2d");
             if (ctx) {
-              ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-              drawBoard(
-                ctx,
-                size,
-                size,
-                boardRef.current,
-                myMark,
-                activeCellRef.current,
-                draftCellRef.current,
-                draftStrokesRef.current,
-                activeStrokeRef.current,
-              );
+              /* 1) rebuild the offscreen base when board/draft state changed */
+              let base = baseCanvasRef.current;
+              if (!base || base.width !== px || base.height !== px) {
+                base = document.createElement("canvas");
+                base.width = px;
+                base.height = px;
+                baseCanvasRef.current = base;
+              }
+              const bCtx = base.getContext("2d")!;
+              bCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+              drawBase(bCtx, size, boardRef.current, myMark, draftCellRef.current, draftStrokesRef.current);
+
+              /* 2) blit base onto the visible canvas */
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(base, 0, 0);
+
+              /* 3) draw the active stroke (if any) directly — no full redraw */
+              const activeCell = activeCellRef.current;
+              const activeStroke = activeStrokeRef.current;
+              if (activeCell !== null && activeStroke.length >= 2) {
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                const pad = size * 0.04;
+                const inner = size - pad * 2;
+                const cellW = inner / 3;
+                const cellH = inner / 3;
+                const col = activeCell % 3;
+                const row = Math.floor(activeCell / 3);
+                const ox = pad + col * cellW;
+                const oy = pad + row * cellH;
+                const strokeLw = Math.max(3, size * 0.015);
+                drawStrokePath(
+                  ctx,
+                  activeStroke.map((p) => ({ x: ox + p.x * cellW, y: oy + p.y * cellH })),
+                  colorFor(myMark),
+                  strokeLw,
+                );
+              }
             }
           }
         }
@@ -336,7 +357,7 @@ export default function TicTacToeOverlay({
       setMyBoard(newBoard);
       onStateChangeRef.current({ board: newBoard, round });
     },
-    [myBoard, myMark, round]
+    [myBoard, myMark, round],
   );
 
   const pointFromEvent = (e: ReactPointerEvent, rect: DOMRect): Point => ({
