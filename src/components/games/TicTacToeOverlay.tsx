@@ -52,29 +52,6 @@ type RoundResult = "win" | "lose" | "draw";
 
 /* ── canvas drawing helpers ────────────────────────────────── */
 
-function drawWavyLine(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-) {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const len = Math.hypot(dx, dy);
-  const nx = -dy / len;
-  const ny = dx / len;
-  const segs = 7;
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  for (let i = 1; i <= segs; i++) {
-    const t = i / segs;
-    const wobble = Math.sin(t * Math.PI * 3) * 0.035 * len;
-    ctx.lineTo(x1 + dx * t + nx * wobble, y1 + dy * t + ny * wobble);
-  }
-  ctx.stroke();
-}
-
 function drawStroke(
   ctx: CanvasRenderingContext2D,
   stroke: Stroke,
@@ -148,7 +125,7 @@ function drawBoard(
     }
   }
 
-  /* wavy hash lines */
+  /* grid lines */
   ctx.save();
   ctx.strokeStyle = "white";
   ctx.lineWidth = Math.max(3, w * 0.012);
@@ -157,10 +134,12 @@ function drawBoard(
   ctx.shadowBlur = 3;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 1;
-  drawWavyLine(ctx, toX(1), toY(0), toX(1), toY(3));
-  drawWavyLine(ctx, toX(2), toY(0), toX(2), toY(3));
-  drawWavyLine(ctx, toX(0), toY(1), toX(3), toY(1));
-  drawWavyLine(ctx, toX(0), toY(2), toX(3), toY(2));
+  ctx.beginPath();
+  ctx.moveTo(toX(1), toY(0)); ctx.lineTo(toX(1), toY(3));
+  ctx.moveTo(toX(2), toY(0)); ctx.lineTo(toX(2), toY(3));
+  ctx.moveTo(toX(0), toY(1)); ctx.lineTo(toX(3), toY(1));
+  ctx.moveTo(toX(0), toY(2)); ctx.lineTo(toX(3), toY(2));
+  ctx.stroke();
   ctx.restore();
 
   const strokeLw = Math.max(3, w * 0.015);
