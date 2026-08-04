@@ -8,35 +8,42 @@ interface TicTacToeProps {
   gameState: Record<string, unknown>;
 }
 
+interface TttCell {
+  mark: "X" | "O";
+}
+
 const WINNING_LINES = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8],
   [0, 3, 6], [1, 4, 7], [2, 5, 8],
   [0, 4, 8], [2, 4, 6],
 ];
 
-function computeWinner(board: (string | null)[]): string | null {
+function computeWinner(board: (TttCell | null)[]): "X" | "O" | null {
   for (const [a, b, c] of WINNING_LINES) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-      return board[a];
+    const m = board[a]?.mark;
+    if (m && board[b]?.mark === m && board[c]?.mark === m) {
+      return m;
     }
   }
   return null;
 }
 
-function isBoardDraw(board: (string | null)[]): boolean {
+function isBoardDraw(board: (TttCell | null)[]): boolean {
   return board.every((cell) => cell !== null);
 }
 
 type RoundResult = "win" | "lose" | "draw";
 
 export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTacToeProps) {
-  const [myBoard, setMyBoard] = useState<(string | null)[]>(Array(9).fill(null));
+  const [myBoard, setMyBoard] = useState<(TttCell | null)[]>(Array(9).fill(null));
   const [round, setRound] = useState(1);
   const [cellSize, setCellSize] = useState(80);
   const roundRef = useRef(1);
   const boardRef = useRef<HTMLDivElement>(null);
   const onStateChangeRef = useRef(onStateChange);
-  onStateChangeRef.current = onStateChange;
+  useEffect(() => {
+    onStateChangeRef.current = onStateChange;
+  }, [onStateChange]);
 
   useEffect(() => {
     const el = boardRef.current;
@@ -54,7 +61,7 @@ export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTa
   const myMark = isPlayerX
     ? (round % 2 === 1 ? "X" : "O")
     : (round % 2 === 1 ? "O" : "X");
-  const opponentBoard = (gameState.board as (string | null)[]) ?? null;
+  const opponentBoard = (gameState.board as (TttCell | null)[]) ?? null;
   const opponentRound = (gameState.round as number) ?? 1;
 
   useEffect(() => {
@@ -84,8 +91,8 @@ export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTa
 
 
 
-  const mergedXCount = effectiveBoard.filter((c) => c === "X").length;
-  const mergedOCount = effectiveBoard.filter((c) => c === "O").length;
+  const mergedXCount = effectiveBoard.filter((c) => c?.mark === "X").length;
+  const mergedOCount = effectiveBoard.filter((c) => c?.mark === "O").length;
   const isMyTurn = !roundOver && (
     myMark === "X" ? mergedXCount === mergedOCount
                     : mergedXCount === mergedOCount + 1
@@ -95,7 +102,7 @@ export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTa
     (index: number) => {
       if (!isMyTurn || myBoard[index] !== null || roundOver) return;
       const newBoard = [...myBoard];
-      newBoard[index] = myMark;
+      newBoard[index] = { mark: myMark };
       setMyBoard(newBoard);
       onStateChange({ board: newBoard, round });
     },
@@ -136,9 +143,9 @@ export default function TicTacToe({ isPlayerX, onStateChange, gameState }: TicTa
             onClick={() => handleCellClick(i)}
             disabled={!isMyTurn || cell !== null || roundOver}
             style={{ width: cellSize, height: cellSize, fontSize: cellSize * 0.4 }}
-            className={`rounded-lg font-bold flex items-center justify-center ${cell === "X" ? "bg-blue-500/80 text-white" : cell === "O" ? "bg-red-500/80 text-white" : "bg-zinc-200 hover:bg-zinc-300 dark:bg-white/20 dark:hover:bg-white/30 text-zinc-900 dark:text-white"} ${isMyTurn && !cell && !roundOver ? "cursor-pointer active:scale-95" : "cursor-default"} transition-all duration-150 backdrop-blur-sm`}
+            className={`rounded-lg font-bold flex items-center justify-center ${cell?.mark === "X" ? "bg-blue-500/80 text-white" : cell?.mark === "O" ? "bg-red-500/80 text-white" : "bg-zinc-200 hover:bg-zinc-300 dark:bg-white/20 dark:hover:bg-white/30 text-zinc-900 dark:text-white"} ${isMyTurn && !cell && !roundOver ? "cursor-pointer active:scale-95" : "cursor-default"} transition-all duration-150 backdrop-blur-sm`}
           >
-            {cell}
+            {cell?.mark}
           </button>
         ))}
       </div>
