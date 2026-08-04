@@ -8,6 +8,7 @@ import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import GameMenu from "./GameMenu";
 import GamePanel from "./GamePanel";
 import RockPaperScissorsCamera, { type RpsServerResult } from "./games/RockPaperScissorsCamera";
+import TicTacToeOverlay from "./games/TicTacToeOverlay";
 import ChatBox from "./ChatBox";
 import type { ChatMessage, GameType } from "@/lib/types";
 import type { Gesture } from "@/lib/gesture";
@@ -728,6 +729,15 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
                     )}
                   </div>
                 )}
+                {gameType === "tic-tac-toe" && (webrtc.remoteStream || showFrozenFrame) && (
+                  <TicTacToeOverlay
+                    key={gameKey}
+                    isPlayerX={isGameHost}
+                    onStateChange={handleGameLocalState}
+                    gameState={gameState}
+                    onGameEnd={handleGameEnd}
+                  />
+                )}
                 {!webrtc.remoteStream && !showFrozenFrame && (
                   <div className="w-full h-full flex items-center justify-center">
                     {status === "waiting" && (
@@ -1050,40 +1060,17 @@ export default function VideoChat({ mode = "video", interests: propInterests = [
           </div>
         </div>
 
-        {mode === "video" && (showChat || (gameType && !isCameraRPS)) && (
-          <div className={`w-full lg:w-96 lg:h-auto flex flex-col min-h-0 border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 ${
-            !gameType || isCameraRPS
-              ? "h-64"
-              : showChat
-                ? gameType === "tic-tac-toe" ? "h-[calc(58%+10rem)]" : "h-[calc(45%+10rem)]"
-                : gameType === "tic-tac-toe" ? "h-[58%]" : "h-[45%]"
-          }`}>
-            {gameType && !isCameraRPS && (
-              <div className={`flex-1 min-h-0 lg:flex-[5] ${showChat ? "border-b border-zinc-300 dark:border-zinc-700" : ""}`}>
-                <GamePanel
-                  key={gameKey}
-                  gameType={gameType}
-                  isHost={isGameHost}
-                  gameState={gameState}
-                  onLocalState={handleGameLocalState}
-                  onGameEnd={handleGameEnd}
-                  onGameOver={handleGameOver}
-                />
-              </div>
-            )}
-            {showChat && (
-              <div className={`${gameType ? "h-40 lg:h-auto lg:flex-[3]" : "h-full"} flex flex-col min-h-0`}>
-                <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-300 dark:border-zinc-700 shrink-0">
-                  <span className="text-zinc-900 dark:text-white font-medium text-sm">Chat</span>
-                  <button onClick={() => setShowChat(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-lg">
-                    ✕
-                  </button>
-                </div>
-                <div className="flex-1 min-h-0">
-                  <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} onFeedback={handleFeedback} incomingFeedback={incomingFeedback} />
-                </div>
-              </div>
-            )}
+        {mode === "video" && showChat && (
+          <div className="w-full lg:w-96 lg:h-auto flex flex-col min-h-0 border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 h-64">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-300 dark:border-zinc-700 shrink-0">
+              <span className="text-zinc-900 dark:text-white font-medium text-sm">Chat</span>
+              <button onClick={() => setShowChat(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-lg">
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <ChatBox messages={chatMessages} onSendMessage={handleSendMessage} onFeedback={handleFeedback} incomingFeedback={incomingFeedback} />
+            </div>
           </div>
         )}
       </div>
