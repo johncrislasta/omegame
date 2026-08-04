@@ -493,7 +493,7 @@ export default function TicTacToeOverlay({
     <>
       <div
         ref={overlayRef}
-        className="absolute inset-0 z-10 pointer-events-none select-none"
+        className="absolute inset-0 z-20 pointer-events-none select-none"
       >
         <div className="w-full h-full flex items-center justify-center">
           <canvas
