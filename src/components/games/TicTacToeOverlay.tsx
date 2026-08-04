@@ -91,7 +91,6 @@ export default function TicTacToeOverlay({
   const [myBoard, setMyBoard] = useState<(TttCell | null)[]>(Array(9).fill(null));
   const [round, setRound] = useState(1);
   const [boardPx, setBoardPx] = useState(0);
-  const [activeStroke, setActiveStroke] = useState<Stroke | null>(null);
   const [activeCell, setActiveCell] = useState<number | null>(null);
   const [draftCell, setDraftCell] = useState<number | null>(null);
   const [draftStrokes, setDraftStrokes] = useState<Stroke[]>([]);
@@ -109,6 +108,7 @@ export default function TicTacToeOverlay({
   const strokeRef = useRef<Stroke>([]);
   const downPosRef = useRef<{ x: number; y: number } | null>(null);
   const draftCellRef = useRef<number | null>(null);
+  const activeLineRef = useRef<SVGPolylineElement>(null);
 
   useEffect(() => {
     const el = overlayRef.current;
@@ -128,6 +128,13 @@ export default function TicTacToeOverlay({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  useEffect(() => {
+    const el = activeLineRef.current;
+    if (el && activeCell !== null) {
+      el.setAttribute("points", strokeToPoints(strokeRef.current));
+    }
+  }, [activeCell]);
 
   const myMark = isPlayerX
     ? round % 2 === 1
@@ -206,7 +213,6 @@ export default function TicTacToeOverlay({
       downPosRef.current = { x: e.clientX, y: e.clientY };
       strokeRef.current = [pointFromEvent(e, rectRef.current)];
       setActiveCell(index);
-      setActiveStroke(strokeRef.current);
     };
 
   const handleBoardPointerMove = (e: ReactPointerEvent<SVGSVGElement>) => {
@@ -215,8 +221,11 @@ export default function TicTacToeOverlay({
     const prev = strokeRef.current[strokeRef.current.length - 1];
     if (!prev || Math.hypot(p.x - prev.x, p.y - prev.y) >= 0.02) {
       if (strokeRef.current.length < 500) {
-        strokeRef.current = [...strokeRef.current, p];
-        setActiveStroke(strokeRef.current);
+        strokeRef.current.push(p);
+        activeLineRef.current?.setAttribute(
+          "points",
+          strokeToPoints(strokeRef.current)
+        );
       }
     }
   };
@@ -231,7 +240,6 @@ export default function TicTacToeOverlay({
     rectRef.current = null;
     activeCellRef.current = null;
     downPosRef.current = null;
-    setActiveStroke(null);
     setActiveCell(null);
     if (index === null || !down) return;
     const dist = Math.hypot(e.clientX - down.x, e.clientY - down.y);
@@ -262,7 +270,6 @@ export default function TicTacToeOverlay({
     draftCellRef.current = null;
     setDraftCell(null);
     setDraftStrokes([]);
-    setActiveStroke(null);
     setActiveCell(null);
   }, []);
 
@@ -359,16 +366,16 @@ export default function TicTacToeOverlay({
                           style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.45))" }}
                         />
                       ))}
-                    {activeCell === i && activeStroke && (
+                    {activeCell === i && (
                       <polyline
-                        points={strokeToPoints(activeStroke)}
+                        ref={activeLineRef}
+                        points=""
                         fill="none"
                         stroke={colorFor(myMark)}
                         strokeWidth={6}
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         vectorEffect="non-scaling-stroke"
-                        style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.45))" }}
                       />
                     )}
                   </g>
