@@ -541,6 +541,18 @@ export default function TicTacToeOverlay({
               </button>
             </div>
           )}
+
+          {/* roundOver actions */}
+          {roundOver && (
+            <div className="mt-3 pointer-events-auto flex items-center gap-2">
+              <button
+                onClick={handlePlayAgain}
+                className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
+              >
+                Play Again
+              </button>
+            </div>
+          )}
         </div>
 
         {/* turn / result HUD */}
@@ -565,18 +577,6 @@ export default function TicTacToeOverlay({
                 : `Opponent's Turn · You are ${myMark}`}
           </div>
         </div>
-
-        {/* roundOver actions */}
-        {roundOver && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto flex items-center gap-2">
-            <button
-              onClick={handlePlayAgain}
-              className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full font-medium text-sm shadow-lg transition-colors"
-            >
-              Play Again
-            </button>
-          </div>
-        )}
       </div>
     </>
   );
