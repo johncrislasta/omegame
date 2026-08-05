@@ -29,6 +29,9 @@ interface Stats {
     byDevice: { label: string; count: number }[];
     byOs: { label: string; count: number }[];
     byBrowser: { label: string; count: number }[];
+    bySource: { label: string; count: number }[];
+    byMedium: { label: string; count: number }[];
+    byCampaign: { label: string; count: number }[];
   };
   chatSessions: {
     today: number;
@@ -40,11 +43,14 @@ interface Stats {
     byDevice: { label: string; count: number }[];
     byOs: { label: string; count: number }[];
     byBrowser: { label: string; count: number }[];
+    bySource: { label: string; count: number }[];
+    byMedium: { label: string; count: number }[];
+    byCampaign: { label: string; count: number }[];
   };
   trend: { day: string; visits: number; chats: number }[];
   recent: {
-    visits: { sessionId: string | null; label: string; country: string | null; ip: string | null; device: string | null; os: string | null; browser: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
-    chats: { sessionId: string | null; label: string; country: string | null; ip: string | null; device: string | null; os: string | null; browser: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
+    visits: { sessionId: string | null; label: string; country: string | null; ip: string | null; device: string | null; os: string | null; browser: string | null; source: string | null; medium: string | null; campaign: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
+    chats: { sessionId: string | null; label: string; country: string | null; ip: string | null; device: string | null; os: string | null; browser: string | null; source: string | null; medium: string | null; campaign: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
   };
   updatedAt: number;
 }
@@ -134,9 +140,9 @@ function ActivityList({ items, type }: { items: Stats["recent"]["visits"]; type:
           <span className={it.active ? "text-green-600 dark:text-green-400" : "text-zinc-500 dark:text-zinc-600"}>
             {it.active ? "online" : it.endedAt ? formatSupportDate(new Date(it.endedAt).getTime()) : ""}
           </span>
-          <span className="ml-auto font-mono text-[10px] text-zinc-400 dark:text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity truncate max-w-[180px]"
-            title={[it.device, it.os, it.browser, it.ip].filter(Boolean).join(" · ") || undefined}>
-            {[it.device, it.os, it.browser, it.ip].filter(Boolean).join(" · ")}
+          <span className="ml-auto font-mono text-[10px] text-zinc-400 dark:text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity truncate max-w-[220px]"
+            title={[it.source, it.medium, it.campaign, it.device, it.os, it.browser, it.ip].filter(Boolean).join(" · ") || undefined}>
+            {[it.source, it.medium, it.campaign, it.device, it.os, it.browser, it.ip].filter(Boolean).join(" · ")}
           </span>
         </div>
       ))}
@@ -368,6 +374,33 @@ export default function AdminPage() {
               <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
                 <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Chats by browser</div>
                 <BreakdownBadges list={stats.chatSessions.byBrowser} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Visits by source</div>
+                <BreakdownBadges list={stats.visits.bySource} />
+              </div>
+              <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Chats by source</div>
+                <BreakdownBadges list={stats.chatSessions.bySource} />
+              </div>
+              <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Visits by medium</div>
+                <BreakdownBadges list={stats.visits.byMedium} />
+              </div>
+              <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Chats by medium</div>
+                <BreakdownBadges list={stats.chatSessions.byMedium} />
+              </div>
+              <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Visits by campaign</div>
+                <BreakdownBadges list={stats.visits.byCampaign} />
+              </div>
+              <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Chats by campaign</div>
+                <BreakdownBadges list={stats.chatSessions.byCampaign} />
               </div>
             </div>
 

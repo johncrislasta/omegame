@@ -24,14 +24,17 @@ export class SocketTracker {
     ip?: string,
     device?: string,
     os?: string,
-    browser?: string
+    browser?: string,
+    source?: string,
+    medium?: string,
+    campaign?: string
   ): string {
     if (!sessionId) sessionId = `sock:${socketId}`;
     let set = this.sessions.get(sessionId);
     if (!set) {
       set = new Set();
       this.sessions.set(sessionId, set);
-      createVisit(sessionId, page || "unknown", country, ip, device, os, browser).then((rowId) => {
+      createVisit(sessionId, page || "unknown", country, ip, device, os, browser, source, medium, campaign).then((rowId) => {
         if (rowId && this.sessions.has(sessionId)) {
           this.visitRows.set(sessionId, rowId);
         }
@@ -46,13 +49,13 @@ export class SocketTracker {
     if (rowId) updateVisitCountry(rowId, country);
   }
 
-  onFindStranger(sessionId: string, mode: string, country?: string, ip?: string, device?: string, os?: string, browser?: string): void {
+  onFindStranger(sessionId: string, mode: string, country?: string, ip?: string, device?: string, os?: string, browser?: string, source?: string, medium?: string, campaign?: string): void {
     const existing = this.chatRows.get(sessionId);
     if (existing) {
       updateChatSession(existing, mode, country);
       return;
     }
-    createChatSession(sessionId, mode, country, ip, device, os, browser).then((rowId) => {
+    createChatSession(sessionId, mode, country, ip, device, os, browser, source, medium, campaign).then((rowId) => {
       if (rowId && this.sessions.has(sessionId)) {
         this.chatRows.set(sessionId, rowId);
       }
