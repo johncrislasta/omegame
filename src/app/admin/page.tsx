@@ -125,7 +125,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [statsError, setStatsError] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("admin_token");
@@ -144,14 +144,14 @@ export default function AdminPage() {
   }, [authed, token]);
 
   async function loadStats() {
-    setStatsError(false);
+    setStatsError(null);
     try {
       const r = await fetch(`/admin/api/stats?token=${token}`);
       const data = await r.json();
       if (r.ok) setStats(data);
-      else setStatsError(true);
+      else setStatsError(data?.error || `Request failed (${r.status})`);
     } catch {
-      setStatsError(true);
+      setStatsError("Could not reach the server");
     }
   }
 
@@ -232,7 +232,7 @@ export default function AdminPage() {
         </div>
 
         {statsError && (
-          <p className="text-red-500 text-xs mb-3">Could not load analytics (is DATABASE_URL set?).</p>
+          <p className="text-red-500 text-xs mb-3">Could not load analytics: {statsError}</p>
         )}
 
         {stats && (

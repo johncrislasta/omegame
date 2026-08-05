@@ -14,12 +14,20 @@ type OnlineCount = { total: number; video: number; text: number; countries: Reco
 let cachedSessionId: string | null = null;
 let cachedPath: string | null = null;
 
+function getPage(): string {
+  const p = window.location.pathname;
+  if (p === "/" || p === "/home") return "home";
+  if (p === "/chat") return "chat";
+  if (p === "/admin") return "admin";
+  return p.replace(/^\/+/, "") || p;
+}
+
 function getSession(): { sessionId: string | undefined; page: string } {
   if (typeof window === "undefined") return { sessionId: undefined, page: "unknown" };
-  const page = window.location.pathname;
-  if (cachedSessionId === null || cachedPath !== page) {
+  const page = getPage();
+  if (cachedSessionId === null || cachedPath !== window.location.pathname) {
     cachedSessionId = uuid();
-    cachedPath = page;
+    cachedPath = window.location.pathname;
   }
   return { sessionId: cachedSessionId, page };
 }
