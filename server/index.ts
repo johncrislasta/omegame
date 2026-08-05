@@ -189,7 +189,10 @@ io.on("connection", (socket) => {
     typeof q.sessionId === "string" ? q.sessionId : undefined,
     typeof q.page === "string" ? q.page : "unknown",
     typeof q.country === "string" ? q.country : undefined,
-    getClientIp(socket)
+    getClientIp(socket),
+    typeof q.device === "string" ? q.device : undefined,
+    typeof q.os === "string" ? q.os : undefined,
+    typeof q.browser === "string" ? q.browser : undefined
   );
   broadcastOnlineCount();
   console.log(`[Server] User connected: ${socket.id}`);
@@ -206,7 +209,15 @@ io.on("connection", (socket) => {
     const interests = data?.interests || [];
     userModes.set(socket.id, mode);
     if (interests.length > 0) updateInterestCounts(socket.id, interests);
-    tracker.onFindStranger(socket.data.sessionId, mode, userCountry.get(socket.id), getClientIp(socket));
+    tracker.onFindStranger(
+      socket.data.sessionId,
+      mode,
+      userCountry.get(socket.id),
+      getClientIp(socket),
+      typeof q.device === "string" ? q.device : undefined,
+      typeof q.os === "string" ? q.os : undefined,
+      typeof q.browser === "string" ? q.browser : undefined
+    );
     broadcastOnlineCount();
     console.log(`[Server] ${socket.id} looking for stranger (${mode})`);
     const result = findPartner(socket.id, mode, userCountry.get(socket.id), interests);

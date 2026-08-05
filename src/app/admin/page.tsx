@@ -26,6 +26,9 @@ interface Stats {
     peakAllTime: number;
     byPage: { label: string; count: number }[];
     byCountry: { label: string; count: number }[];
+    byDevice: { label: string; count: number }[];
+    byOs: { label: string; count: number }[];
+    byBrowser: { label: string; count: number }[];
   };
   chatSessions: {
     today: number;
@@ -34,11 +37,14 @@ interface Stats {
     peakAllTime: number;
     byMode: { label: string; count: number }[];
     byCountry: { label: string; count: number }[];
+    byDevice: { label: string; count: number }[];
+    byOs: { label: string; count: number }[];
+    byBrowser: { label: string; count: number }[];
   };
   trend: { day: string; visits: number; chats: number }[];
   recent: {
-    visits: { sessionId: string | null; label: string; country: string | null; ip: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
-    chats: { sessionId: string | null; label: string; country: string | null; ip: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
+    visits: { sessionId: string | null; label: string; country: string | null; ip: string | null; device: string | null; os: string | null; browser: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
+    chats: { sessionId: string | null; label: string; country: string | null; ip: string | null; device: string | null; os: string | null; browser: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
   };
   updatedAt: number;
 }
@@ -66,6 +72,20 @@ function CountryBadges({ list, max }: { list: { label: string; count: number }[]
         <span key={r.label} className="inline-flex items-center gap-1 text-xs text-zinc-700 dark:text-zinc-300">
           <span>{countryToFlag(r.label)}</span>
           <span className="font-semibold">{r.label}</span>
+          <span className="text-zinc-500">{r.count}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function BreakdownBadges({ list }: { list: { label: string; count: number }[] }) {
+  if (list.length === 0) return <span className="text-zinc-500 dark:text-zinc-600 text-xs">No data</span>;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {list.map((r) => (
+        <span key={r.label} className="inline-flex items-center gap-1 text-xs text-zinc-700 dark:text-zinc-300">
+          <span className="px-1.5 py-0.5 rounded bg-zinc-300/60 dark:bg-zinc-700/60 font-semibold capitalize">{r.label || "unknown"}</span>
           <span className="text-zinc-500">{r.count}</span>
         </span>
       ))}
@@ -114,8 +134,9 @@ function ActivityList({ items, type }: { items: Stats["recent"]["visits"]; type:
           <span className={it.active ? "text-green-600 dark:text-green-400" : "text-zinc-500 dark:text-zinc-600"}>
             {it.active ? "online" : it.endedAt ? formatSupportDate(new Date(it.endedAt).getTime()) : ""}
           </span>
-          <span className="ml-auto font-mono text-[10px] text-zinc-400 dark:text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity truncate max-w-[120px]" title={it.ip || undefined}>
-            {it.ip || ""}
+          <span className="ml-auto font-mono text-[10px] text-zinc-400 dark:text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity truncate max-w-[180px]"
+            title={[it.device, it.os, it.browser, it.ip].filter(Boolean).join(" · ") || undefined}>
+            {[it.device, it.os, it.browser, it.ip].filter(Boolean).join(" · ")}
           </span>
         </div>
       ))}
@@ -320,6 +341,33 @@ export default function AdminPage() {
               <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
                 <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Chats by country</div>
                 <CountryBadges list={stats.chatSessions.byCountry} max={8} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Visits by device</div>
+                <BreakdownBadges list={stats.visits.byDevice} />
+              </div>
+              <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Chats by device</div>
+                <BreakdownBadges list={stats.chatSessions.byDevice} />
+              </div>
+              <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Visits by OS</div>
+                <BreakdownBadges list={stats.visits.byOs} />
+              </div>
+              <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Chats by OS</div>
+                <BreakdownBadges list={stats.chatSessions.byOs} />
+              </div>
+              <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Visits by browser</div>
+                <BreakdownBadges list={stats.visits.byBrowser} />
+              </div>
+              <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1.5">Chats by browser</div>
+                <BreakdownBadges list={stats.chatSessions.byBrowser} />
               </div>
             </div>
 
