@@ -27,6 +27,7 @@ export async function ensureTables(): Promise<void> {
       session_id TEXT,
       page TEXT,
       country TEXT,
+      ip TEXT,
       connected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       disconnected_at TIMESTAMPTZ
     )
@@ -37,6 +38,7 @@ export async function ensureTables(): Promise<void> {
       session_id TEXT,
       mode TEXT,
       country TEXT,
+      ip TEXT,
       chat_started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       chat_ended_at TIMESTAMPTZ
     )
@@ -54,10 +56,12 @@ export async function ensureTables(): Promise<void> {
   await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS session_id TEXT`);
   await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS page TEXT`);
   await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS country TEXT`);
+  await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS ip TEXT`);
   await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS disconnected_at TIMESTAMPTZ`);
   await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS session_id TEXT`);
   await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS mode TEXT`);
   await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS country TEXT`);
+  await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS ip TEXT`);
   await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS chat_ended_at TIMESTAMPTZ`);
 }
 
@@ -71,11 +75,11 @@ export async function cleanupOrphaned(): Promise<void> {
   }
 }
 
-export async function createVisit(sessionId: string, page: string, country?: string): Promise<string | null> {
+export async function createVisit(sessionId: string, page: string, country?: string, ip?: string): Promise<string | null> {
   try {
     const { rows } = await getPool().query(
-      `INSERT INTO visits (session_id, page, country) VALUES ($1, $2, $3) RETURNING id`,
-      [sessionId, page, country || null]
+      `INSERT INTO visits (session_id, page, country, ip) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [sessionId, page, country || null, ip || null]
     );
     return rows[0].id as string;
   } catch (err) {
@@ -100,11 +104,11 @@ export async function updateVisitCountry(id: string, country: string): Promise<v
   }
 }
 
-export async function createChatSession(sessionId: string, mode: string, country?: string): Promise<string | null> {
+export async function createChatSession(sessionId: string, mode: string, country?: string, ip?: string): Promise<string | null> {
   try {
     const { rows } = await getPool().query(
-      `INSERT INTO chat_sessions (session_id, mode, country) VALUES ($1, $2, $3) RETURNING id`,
-      [sessionId, mode, country || null]
+      `INSERT INTO chat_sessions (session_id, mode, country, ip) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [sessionId, mode, country || null, ip || null]
     );
     return rows[0].id as string;
   } catch (err) {
@@ -294,6 +298,7 @@ export interface RecentEvent {
   page?: string | null;
   mode?: string | null;
   country?: string | null;
+  ip?: string | null;
   startedAt: string;
   endedAt?: string | null;
   active: boolean;
@@ -301,11 +306,11 @@ export interface RecentEvent {
 
 export async function getRecent(limit = 10): Promise<{ visits: RecentEvent[]; chats: RecentEvent[] }> {
   const { rows: visits } = await getPool().query(
-    `SELECT session_id, page, country, connected_at, disconnected_at FROM visits ORDER BY connected_at DESC LIMIT $1`,
+    `SELECT session_id, page, country, ip, connected_at, disconnected_at FROM visits ORDER BY connected_at DESC LIMIT $1`,
     [limit]
   );
   const { rows: chats } = await getPool().query(
-    `SELECT session_id, mode, country, chat_started_at, chat_ended_at FROM chat_sessions ORDER BY chat_started_at DESC LIMIT $1`,
+    `SELECT session_id, mode, country, ip, chat_started_at, chat_ended_at FROM chat_sessions ORDER BY chat_started_at DESC LIMIT $1`,
     [limit]
   );
   return {
@@ -314,6 +319,7 @@ export async function getRecent(limit = 10): Promise<{ visits: RecentEvent[]; ch
       label: r.page || "unknown",
       page: r.page,
       country: r.country,
+      ip: r.ip,
       startedAt: r.connected_at,
       endedAt: r.disconnected_at,
       active: !r.disconnected_at,
@@ -323,6 +329,7 @@ export async function getRecent(limit = 10): Promise<{ visits: RecentEvent[]; ch
       label: r.mode || "unknown",
       mode: r.mode,
       country: r.country,
+      ip: r.ip,
       startedAt: r.chat_started_at,
       endedAt: r.chat_ended_at,
       active: !r.chat_ended_at,

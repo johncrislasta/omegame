@@ -16,13 +16,13 @@ export class SocketTracker {
     return this.sessions.size;
   }
 
-  onConnection(socketId: string, sessionId: string | undefined, page: string, country?: string): string {
+  onConnection(socketId: string, sessionId: string | undefined, page: string, country?: string, ip?: string): string {
     if (!sessionId) sessionId = `sock:${socketId}`;
     let set = this.sessions.get(sessionId);
     if (!set) {
       set = new Set();
       this.sessions.set(sessionId, set);
-      createVisit(sessionId, page || "unknown", country).then((rowId) => {
+      createVisit(sessionId, page || "unknown", country, ip).then((rowId) => {
         if (rowId && this.sessions.has(sessionId)) {
           this.visitRows.set(sessionId, rowId);
         }
@@ -37,13 +37,13 @@ export class SocketTracker {
     if (rowId) updateVisitCountry(rowId, country);
   }
 
-  onFindStranger(sessionId: string, mode: string, country?: string): void {
+  onFindStranger(sessionId: string, mode: string, country?: string, ip?: string): void {
     const existing = this.chatRows.get(sessionId);
     if (existing) {
       updateChatSession(existing, mode, country);
       return;
     }
-    createChatSession(sessionId, mode, country).then((rowId) => {
+    createChatSession(sessionId, mode, country, ip).then((rowId) => {
       if (rowId && this.sessions.has(sessionId)) {
         this.chatRows.set(sessionId, rowId);
       }

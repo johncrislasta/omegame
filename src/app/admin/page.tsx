@@ -37,8 +37,8 @@ interface Stats {
   };
   trend: { day: string; visits: number; chats: number }[];
   recent: {
-    visits: { sessionId: string | null; label: string; country: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
-    chats: { sessionId: string | null; label: string; country: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
+    visits: { sessionId: string | null; label: string; country: string | null; ip: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
+    chats: { sessionId: string | null; label: string; country: string | null; ip: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
   };
   updatedAt: number;
 }
@@ -105,7 +105,7 @@ function ActivityList({ items, type }: { items: Stats["recent"]["visits"]; type:
   return (
     <div className="space-y-1">
       {items.map((it) => (
-        <div key={it.sessionId} className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">
+        <div key={it.sessionId} className="group flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">
           <span className="px-1.5 py-0.5 rounded bg-zinc-300/60 dark:bg-zinc-700/60 text-[10px] font-semibold uppercase">
             {it.label || type}
           </span>
@@ -113,6 +113,9 @@ function ActivityList({ items, type }: { items: Stats["recent"]["visits"]; type:
           <span className="text-zinc-500">{formatSupportDate(new Date(it.startedAt).getTime())}</span>
           <span className={it.active ? "text-green-600 dark:text-green-400" : "text-zinc-500 dark:text-zinc-600"}>
             {it.active ? "online" : it.endedAt ? formatSupportDate(new Date(it.endedAt).getTime()) : ""}
+          </span>
+          <span className="ml-auto font-mono text-[10px] text-zinc-400 dark:text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity truncate max-w-[120px]" title={it.ip || undefined}>
+            {it.ip || ""}
           </span>
         </div>
       ))}

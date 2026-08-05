@@ -3,7 +3,7 @@ import { createServer as createHttpServer } from "http";
 import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import next from "next";
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
 import { SocketTracker } from "./src/lib/socketTracking";
 import { ensureTables, cleanupOrphaned, setLiveCount, maybeSaveLiveSnapshot } from "./src/lib/analytics";
 
@@ -33,6 +33,14 @@ const io = new Server(server, {
 
 const tracker = new SocketTracker();
 const userModes = new Map<string, "video" | "text">();
+
+function getClientIp(socket: Socket): string | undefined {
+  const fwd = socket.handshake.headers["x-forwarded-for"];
+  const forwarded = Array.isArray(fwd) ? fwd[0] : fwd;
+  const raw = (forwarded || socket.handshake.address || "").trim();
+  if (!raw) return undefined;
+  return raw.replace(/^::ffff:/, "") || undefined;
+}
 
 function broadcastOnlineCount() {
   let video = 0;
@@ -217,7 +225,8 @@ io.on("connection", (socket) => {
     socket.id,
     typeof q.sessionId === "string" ? q.sessionId : undefined,
     typeof q.page === "string" ? q.page : "unknown",
-    typeof q.country === "string" ? q.country : undefined
+    typeof q.country === "string" ? q.country : undefined,
+    getClientIp(socket)
   );
   broadcastOnlineCount();
   console.log(`[Server] User connected: ${socket.id}`);
@@ -234,7 +243,7 @@ io.on("connection", (socket) => {
     const interests = data?.interests || [];
     userModes.set(socket.id, mode);
     if (interests.length > 0) updateInterestCounts(socket.id, interests);
-    tracker.onFindStranger(socket.data.sessionId, mode, userCountry.get(socket.id));
+    tracker.onFindStranger(socket.data.sessionId, mode, userCountry.get(socket.id), getClientIp(socket));
     broadcastOnlineCount();
     console.log(`[Server] ${socket.id} looking for stranger (${mode})`);
     const result = findPartner(socket.id, mode, userCountry.get(socket.id), interests);
