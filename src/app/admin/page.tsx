@@ -126,18 +126,45 @@ export default function AdminPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  async function tryLogin(candidate: string) {
+    const t = candidate.trim();
+    try {
+      const r = await fetch(`/admin/api/stats?token=${encodeURIComponent(t)}`);
+      if (r.status === 401) {
+        sessionStorage.removeItem("admin_token");
+        setAuthed(false);
+        setLoginError("Invalid admin token");
+        return;
+      }
+      setToken(t);
+      setAuthed(true);
+      setLoginError(null);
+      sessionStorage.setItem("admin_token", t);
+    } catch {
+      setLoginError("Could not reach the server");
+    }
+  }
 
   useEffect(() => {
     const saved = sessionStorage.getItem("admin_token");
-    if (saved) {
-      setToken(saved);
-      setAuthed(true);
-    }
+    if (!saved) return;
+    fetch(`/admin/api/stats?token=${encodeURIComponent(saved.trim())}`)
+      .then((r) => {
+        if (r.status === 401) {
+          sessionStorage.removeItem("admin_token");
+          return;
+        }
+        setToken(saved.trim());
+        setAuthed(true);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
     if (authed) {
-      fetch(`/api/thanks?token=${token}`).then((r) => r.json()).then(setEntries).catch(() => {});
+      fetch(`/api/thanks?token=${encodeURIComponent(token)}`).then((r) => r.json()).then(setEntries).catch(() => {});
       loadStats();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,7 +173,7 @@ export default function AdminPage() {
   async function loadStats() {
     setStatsError(null);
     try {
-      const r = await fetch(`/admin/api/stats?token=${token}`);
+      const r = await fetch(`/admin/api/stats?token=${encodeURIComponent(token)}`);
       const data = await r.json();
       if (r.ok) setStats(data);
       else setStatsError(data?.error || `Request failed (${r.status})`);
@@ -156,7 +183,7 @@ export default function AdminPage() {
   }
 
   async function doAction(timestamp: number, action: string) {
-    await fetch(`/admin/api?token=${token}`, {
+    await fetch(`/admin/api?token=${encodeURIComponent(token)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, timestamp }),
@@ -174,8 +201,7 @@ export default function AdminPage() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            setAuthed(true);
-            sessionStorage.setItem("admin_token", token);
+            tryLogin(token);
           }}
           className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-6 border border-zinc-300 dark:border-zinc-700 w-full max-w-sm"
         >
@@ -187,6 +213,7 @@ export default function AdminPage() {
             placeholder="Admin token"
             className="w-full bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mint placeholder-zinc-500 mb-3"
           />
+          {loginError && <p className="text-red-500 text-xs mb-3">{loginError}</p>}
           <button
             type="submit"
             className="w-full py-2 bg-mint hover:bg-[#8fd696] text-zinc-900 font-semibold rounded-lg text-sm"
