@@ -324,8 +324,16 @@ export default function AdminPage() {
             </div>
 
             <div className="bg-zinc-200/50 dark:bg-zinc-800/50 rounded-lg px-3 py-2">
-              <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-2">
-                Last 7 days <span className="text-zinc-500/70">(mint = visits, gray = chats)</span>
+              <div className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-2 flex items-center gap-3">
+                <span>Last 7 days</span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm bg-mint/60 dark:bg-mint/40" />
+                  visits
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm bg-zinc-300 dark:bg-zinc-700" />
+                  chats
+                </span>
               </div>
               <DayBars days={stats.trend} />
             </div>
