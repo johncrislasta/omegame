@@ -229,7 +229,10 @@ io.on("connection", (socket) => {
     getClientIp(socket),
     typeof q.device === "string" ? q.device : undefined,
     typeof q.os === "string" ? q.os : undefined,
-    typeof q.browser === "string" ? q.browser : undefined
+    typeof q.browser === "string" ? q.browser : undefined,
+    typeof q.utmSource === "string" ? q.utmSource : undefined,
+    typeof q.utmMedium === "string" ? q.utmMedium : undefined,
+    typeof q.utmCampaign === "string" ? q.utmCampaign : undefined
   );
   broadcastOnlineCount();
   console.log(`[Server] User connected: ${socket.id}`);
@@ -253,7 +256,10 @@ io.on("connection", (socket) => {
       getClientIp(socket),
       typeof q.device === "string" ? q.device : undefined,
       typeof q.os === "string" ? q.os : undefined,
-      typeof q.browser === "string" ? q.browser : undefined
+      typeof q.browser === "string" ? q.browser : undefined,
+      typeof q.utmSource === "string" ? q.utmSource : undefined,
+      typeof q.utmMedium === "string" ? q.utmMedium : undefined,
+      typeof q.utmCampaign === "string" ? q.utmCampaign : undefined
     );
     broadcastOnlineCount();
     console.log(`[Server] ${socket.id} looking for stranger (${mode})`);

@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OmeGame
+
+An Omegle-style random video chat app built with Next.js, Socket.IO, and PostgreSQL.
 
 ## Getting Started
 
-First, run the development server:
+Create a `.env.local` file with the following:
+
+```bash
+DATABASE_URL=postgres://...          # PostgreSQL (e.g. Neon) connection string
+ADMIN_TOKEN=your-secret-admin-token  # token used to access /admin
+NEXT_PUBLIC_SIGNALING_URL=           # optional: socket server URL (defaults to the same origin)
+```
+
+Then run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [https://localhost:3000](https://localhost:3000) in your browser. The dev server uses a self-signed HTTPS certificate (see `certificates/`), so your browser may warn about it.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The standalone signaling server runs separately on port 3001:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev:server
+```
 
-## Learn More
+## Analytics & Traffic Tracking
 
-To learn more about Next.js, take a look at the following resources:
+The app records analytics server-side in PostgreSQL whenever a visitor connects (`visits`) or starts a chat (`chat_sessions`):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- page, country, IP, device/OS/browser, timestamps
+- **traffic source** — captured from UTM-style query string parameters
+- live online count and peak concurrency (snapshots)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Tracking traffic sources with UTM params
 
-## Deploy on Vercel
+Append UTM parameters to any URL to record where a visitor came from:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+https://yourdomain.com/?utm_source=facebook&utm_medium=social&utm_campaign=alpha-review
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Supported parameters:
+
+| Parameter        | Notes                                                        |
+| ---------------- | ------------------------------------------------------------ |
+| `utm_source`     | Primary source (facebook, tiktok, reddit, ...)               |
+| `utm_medium`     | Medium (social, cpc, email, ...)                             |
+| `utm_campaign`   | Campaign name (alpha-review, launch, ...)                    |
+| `source`/`ref`/`from` | Fallbacks used for the source when `utm_source` is absent |
+
+Convention: keep values lowercase and hyphen-separated, e.g. `utm_campaign=alpha-review-2` for a second wave.
+
+### Viewing analytics
+
+Visit `/admin` and log in with the `ADMIN_TOKEN` from `.env.local`. The dashboard shows live counts, today/all-time totals, peaks, breakdowns (page, country, device, OS, browser, **source, medium, campaign**), a 7-day trend chart, and recent visits/chats.
+
+## Deploying
+
+Both the app and the signaling server are hosted on [Render](https://render.com).
+
+- **App**: a Render web service running the Next.js app. Set `DATABASE_URL` and `ADMIN_TOKEN` as environment variables, with the build command `npm run build` and start command `npm start`.
+- **Signaling server**: a separate web service running `server/index.ts` (port 3001). In the app's environment, set `NEXT_PUBLIC_SIGNALING_URL` to the signaling service's URL.

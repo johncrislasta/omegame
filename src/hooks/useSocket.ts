@@ -56,6 +56,17 @@ function getDeviceInfo(): { device: string; os: string; browser: string } {
   return { device, os, browser };
 }
 
+function getUtmInfo(): { utmSource: string; utmMedium: string; utmCampaign: string } {
+  if (typeof window === "undefined") return { utmSource: "", utmMedium: "", utmCampaign: "" };
+  const q = new URLSearchParams(window.location.search);
+  const clean = (v: string | null) => (v ? v.trim().slice(0, 100) : "");
+  return {
+    utmSource: clean(q.get("utm_source")) || clean(q.get("source")) || clean(q.get("ref")) || clean(q.get("from")),
+    utmMedium: clean(q.get("utm_medium")),
+    utmCampaign: clean(q.get("utm_campaign")),
+  };
+}
+
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -65,9 +76,10 @@ export function useSocket() {
     const { sessionId, page } = getSession();
     const country = sessionStorage.getItem("country") || undefined;
     const { device, os, browser } = getDeviceInfo();
+    const { utmSource, utmMedium, utmCampaign } = getUtmInfo();
     const socket = io(SOCKET_URL, {
       transports: ["websocket", "polling"],
-      query: { sessionId, page, country, device, os, browser },
+      query: { sessionId, page, country, device, os, browser, utmSource, utmMedium, utmCampaign },
     });
     socketRef.current = socket;
 

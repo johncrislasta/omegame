@@ -31,6 +31,9 @@ export async function ensureTables(): Promise<void> {
       device TEXT,
       os TEXT,
       browser TEXT,
+      source TEXT,
+      medium TEXT,
+      campaign TEXT,
       connected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       disconnected_at TIMESTAMPTZ
     )
@@ -45,6 +48,9 @@ export async function ensureTables(): Promise<void> {
       device TEXT,
       os TEXT,
       browser TEXT,
+      source TEXT,
+      medium TEXT,
+      campaign TEXT,
       chat_started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       chat_ended_at TIMESTAMPTZ
     )
@@ -66,6 +72,9 @@ export async function ensureTables(): Promise<void> {
   await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS device TEXT`);
   await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS os TEXT`);
   await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS browser TEXT`);
+  await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS source TEXT`);
+  await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS medium TEXT`);
+  await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS campaign TEXT`);
   await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS disconnected_at TIMESTAMPTZ`);
   await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS session_id TEXT`);
   await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS mode TEXT`);
@@ -74,6 +83,9 @@ export async function ensureTables(): Promise<void> {
   await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS device TEXT`);
   await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS os TEXT`);
   await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS browser TEXT`);
+  await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS source TEXT`);
+  await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS medium TEXT`);
+  await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS campaign TEXT`);
   await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS chat_ended_at TIMESTAMPTZ`);
 }
 
@@ -94,12 +106,26 @@ export async function createVisit(
   ip?: string,
   device?: string,
   os?: string,
-  browser?: string
+  browser?: string,
+  source?: string,
+  medium?: string,
+  campaign?: string
 ): Promise<string | null> {
   try {
     const { rows } = await getPool().query(
-      `INSERT INTO visits (session_id, page, country, ip, device, os, browser) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [sessionId, page, country || null, ip || null, device || null, os || null, browser || null]
+      `INSERT INTO visits (session_id, page, country, ip, device, os, browser, source, medium, campaign) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      [
+        sessionId,
+        page,
+        country || null,
+        ip || null,
+        device || null,
+        os || null,
+        browser || null,
+        source || null,
+        medium || null,
+        campaign || null,
+      ]
     );
     return rows[0].id as string;
   } catch (err) {
@@ -131,12 +157,26 @@ export async function createChatSession(
   ip?: string,
   device?: string,
   os?: string,
-  browser?: string
+  browser?: string,
+  source?: string,
+  medium?: string,
+  campaign?: string
 ): Promise<string | null> {
   try {
     const { rows } = await getPool().query(
-      `INSERT INTO chat_sessions (session_id, mode, country, ip, device, os, browser) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [sessionId, mode, country || null, ip || null, device || null, os || null, browser || null]
+      `INSERT INTO chat_sessions (session_id, mode, country, ip, device, os, browser, source, medium, campaign) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      [
+        sessionId,
+        mode,
+        country || null,
+        ip || null,
+        device || null,
+        os || null,
+        browser || null,
+        source || null,
+        medium || null,
+        campaign || null,
+      ]
     );
     return rows[0].id as string;
   } catch (err) {
@@ -250,6 +290,9 @@ export interface VisitStats {
   byDevice: { label: string; count: number }[];
   byOs: { label: string; count: number }[];
   byBrowser: { label: string; count: number }[];
+  bySource: { label: string; count: number }[];
+  byMedium: { label: string; count: number }[];
+  byCampaign: { label: string; count: number }[];
 }
 
 export async function getVisitStats(): Promise<VisitStats> {
@@ -278,6 +321,15 @@ export async function getVisitStats(): Promise<VisitStats> {
   const { rows: byBrowser } = await getPool().query(
     `SELECT browser, COUNT(*) AS count FROM visits WHERE browser IS NOT NULL GROUP BY browser ORDER BY count DESC`
   );
+  const { rows: bySource } = await getPool().query(
+    `SELECT source, COUNT(*) AS count FROM visits WHERE source IS NOT NULL GROUP BY source ORDER BY count DESC`
+  );
+  const { rows: byMedium } = await getPool().query(
+    `SELECT medium, COUNT(*) AS count FROM visits WHERE medium IS NOT NULL GROUP BY medium ORDER BY count DESC`
+  );
+  const { rows: byCampaign } = await getPool().query(
+    `SELECT campaign, COUNT(*) AS count FROM visits WHERE campaign IS NOT NULL GROUP BY campaign ORDER BY count DESC`
+  );
   return {
     today,
     allTime,
@@ -288,6 +340,9 @@ export async function getVisitStats(): Promise<VisitStats> {
     byDevice: rowsToCounts(byDevice, "device"),
     byOs: rowsToCounts(byOs, "os"),
     byBrowser: rowsToCounts(byBrowser, "browser"),
+    bySource: rowsToCounts(bySource, "source"),
+    byMedium: rowsToCounts(byMedium, "medium"),
+    byCampaign: rowsToCounts(byCampaign, "campaign"),
   };
 }
 
@@ -301,6 +356,9 @@ export interface ChatStats {
   byDevice: { label: string; count: number }[];
   byOs: { label: string; count: number }[];
   byBrowser: { label: string; count: number }[];
+  bySource: { label: string; count: number }[];
+  byMedium: { label: string; count: number }[];
+  byCampaign: { label: string; count: number }[];
 }
 
 export async function getChatStats(): Promise<ChatStats> {
@@ -329,6 +387,15 @@ export async function getChatStats(): Promise<ChatStats> {
   const { rows: byBrowser } = await getPool().query(
     `SELECT browser, COUNT(*) AS count FROM chat_sessions WHERE browser IS NOT NULL GROUP BY browser ORDER BY count DESC`
   );
+  const { rows: bySource } = await getPool().query(
+    `SELECT source, COUNT(*) AS count FROM chat_sessions WHERE source IS NOT NULL GROUP BY source ORDER BY count DESC`
+  );
+  const { rows: byMedium } = await getPool().query(
+    `SELECT medium, COUNT(*) AS count FROM chat_sessions WHERE medium IS NOT NULL GROUP BY medium ORDER BY count DESC`
+  );
+  const { rows: byCampaign } = await getPool().query(
+    `SELECT campaign, COUNT(*) AS count FROM chat_sessions WHERE campaign IS NOT NULL GROUP BY campaign ORDER BY count DESC`
+  );
   return {
     today,
     allTime,
@@ -339,6 +406,9 @@ export async function getChatStats(): Promise<ChatStats> {
     byDevice: rowsToCounts(byDevice, "device"),
     byOs: rowsToCounts(byOs, "os"),
     byBrowser: rowsToCounts(byBrowser, "browser"),
+    bySource: rowsToCounts(bySource, "source"),
+    byMedium: rowsToCounts(byMedium, "medium"),
+    byCampaign: rowsToCounts(byCampaign, "campaign"),
   };
 }
 
@@ -374,6 +444,9 @@ export interface RecentEvent {
   device?: string | null;
   os?: string | null;
   browser?: string | null;
+  source?: string | null;
+  medium?: string | null;
+  campaign?: string | null;
   startedAt: string;
   endedAt?: string | null;
   active: boolean;
@@ -381,11 +454,11 @@ export interface RecentEvent {
 
 export async function getRecent(limit = 10): Promise<{ visits: RecentEvent[]; chats: RecentEvent[] }> {
   const { rows: visits } = await getPool().query(
-    `SELECT session_id, page, country, ip, device, os, browser, connected_at, disconnected_at FROM visits ORDER BY connected_at DESC LIMIT $1`,
+    `SELECT session_id, page, country, ip, device, os, browser, source, medium, campaign, connected_at, disconnected_at FROM visits ORDER BY connected_at DESC LIMIT $1`,
     [limit]
   );
   const { rows: chats } = await getPool().query(
-    `SELECT session_id, mode, country, ip, device, os, browser, chat_started_at, chat_ended_at FROM chat_sessions ORDER BY chat_started_at DESC LIMIT $1`,
+    `SELECT session_id, mode, country, ip, device, os, browser, source, medium, campaign, chat_started_at, chat_ended_at FROM chat_sessions ORDER BY chat_started_at DESC LIMIT $1`,
     [limit]
   );
   return {
@@ -398,6 +471,9 @@ export async function getRecent(limit = 10): Promise<{ visits: RecentEvent[]; ch
       device: r.device,
       os: r.os,
       browser: r.browser,
+      source: r.source,
+      medium: r.medium,
+      campaign: r.campaign,
       startedAt: r.connected_at,
       endedAt: r.disconnected_at,
       active: !r.disconnected_at,
@@ -411,6 +487,9 @@ export async function getRecent(limit = 10): Promise<{ visits: RecentEvent[]; ch
       device: r.device,
       os: r.os,
       browser: r.browser,
+      source: r.source,
+      medium: r.medium,
+      campaign: r.campaign,
       startedAt: r.chat_started_at,
       endedAt: r.chat_ended_at,
       active: !r.chat_ended_at,
