@@ -3,7 +3,9 @@ import { createServer as createHttpServer } from "http";
 import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import next from "next";
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
+import { SocketTracker } from "./src/lib/socketTracking";
+import { ensureTables, cleanupOrphaned, setLiveCount, maybeSaveLiveSnapshot } from "./src/lib/analytics";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "0.0.0.0";
@@ -29,8 +31,16 @@ const io = new Server(server, {
   },
 });
 
-let totalConnected = 0;
+const tracker = new SocketTracker();
 const userModes = new Map<string, "video" | "text">();
+
+function getClientIp(socket: Socket): string | undefined {
+  const fwd = socket.handshake.headers["x-forwarded-for"];
+  const forwarded = Array.isArray(fwd) ? fwd[0] : fwd;
+  const raw = (forwarded || socket.handshake.address || "").trim();
+  if (!raw) return undefined;
+  return raw.replace(/^::ffff:/, "") || undefined;
+}
 
 function broadcastOnlineCount() {
   let video = 0;
@@ -44,7 +54,10 @@ function broadcastOnlineCount() {
       countries[country] = (countries[country] || 0) + 1;
     }
   }
-  io.emit("online-count", { total: totalConnected, video, text, countries, topInterests: getTopInterests(10) });
+  const count = { total: tracker.totalSessions, video, text, countries, topInterests: getTopInterests(10) };
+  io.emit("online-count", count);
+  setLiveCount({ total: tracker.totalSessions, video, text, countries });
+  maybeSaveLiveSnapshot({ total: tracker.totalSessions, video, text, countries });
 }
 
 interface WaitingUser {
@@ -207,13 +220,24 @@ const filtered = queue.filter((w) => w.socketId !== socketId);
 }
 
 io.on("connection", (socket) => {
-  totalConnected++;
+  const q = socket.handshake.query;
+  socket.data.sessionId = tracker.onConnection(
+    socket.id,
+    typeof q.sessionId === "string" ? q.sessionId : undefined,
+    typeof q.page === "string" ? q.page : "unknown",
+    typeof q.country === "string" ? q.country : undefined,
+    getClientIp(socket),
+    typeof q.device === "string" ? q.device : undefined,
+    typeof q.os === "string" ? q.os : undefined,
+    typeof q.browser === "string" ? q.browser : undefined
+  );
   broadcastOnlineCount();
   console.log(`[Server] User connected: ${socket.id}`);
 
   socket.on("set-country", (country: string) => {
     if (typeof country === "string" && country.length === 2) {
       userCountry.set(socket.id, country.toUpperCase());
+      tracker.onSetCountry(socket.data.sessionId, country.toUpperCase());
     }
   });
 
@@ -222,6 +246,15 @@ io.on("connection", (socket) => {
     const interests = data?.interests || [];
     userModes.set(socket.id, mode);
     if (interests.length > 0) updateInterestCounts(socket.id, interests);
+    tracker.onFindStranger(
+      socket.data.sessionId,
+      mode,
+      userCountry.get(socket.id),
+      getClientIp(socket),
+      typeof q.device === "string" ? q.device : undefined,
+      typeof q.os === "string" ? q.os : undefined,
+      typeof q.browser === "string" ? q.browser : undefined
+    );
     broadcastOnlineCount();
     console.log(`[Server] ${socket.id} looking for stranger (${mode})`);
     const result = findPartner(socket.id, mode, userCountry.get(socket.id), interests);
@@ -351,7 +384,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    totalConnected = Math.max(0, totalConnected - 1);
     userModes.delete(socket.id);
     broadcastOnlineCount();
     userCountry.delete(socket.id);
@@ -390,6 +422,8 @@ io.on("connection", (socket) => {
         activeRooms.delete(roomId);
       }
     }
+
+    tracker.onDisconnect(socket.id, socket.data.sessionId);
   });
 });
 
@@ -400,6 +434,10 @@ app.prepare().then(() => {
   server.on("request", (req, res) => {
     handle(req, res);
   });
+
+  ensureTables()
+    .then(() => cleanupOrphaned())
+    .catch((err) => console.error("[Server] Analytics init error:", err));
 
   server.listen(port, () => {
     console.log(`> Ready on ${useHttps ? "https" : "http"}://${hostname}:${port}`);
