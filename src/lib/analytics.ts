@@ -34,6 +34,7 @@ export async function ensureTables(): Promise<void> {
       source TEXT,
       medium TEXT,
       campaign TEXT,
+      is_bot BOOLEAN NOT NULL DEFAULT false,
       connected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       disconnected_at TIMESTAMPTZ
     )
@@ -75,6 +76,7 @@ export async function ensureTables(): Promise<void> {
   await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS source TEXT`);
   await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS medium TEXT`);
   await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS campaign TEXT`);
+  await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS is_bot BOOLEAN NOT NULL DEFAULT false`);
   await p.query(`ALTER TABLE visits ADD COLUMN IF NOT EXISTS disconnected_at TIMESTAMPTZ`);
   await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS session_id TEXT`);
   await p.query(`ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS mode TEXT`);
@@ -147,6 +149,14 @@ export async function updateVisitCountry(id: string, country: string): Promise<v
     await getPool().query(`UPDATE visits SET country = $2 WHERE id = $1`, [id, country]);
   } catch (err) {
     console.error("analytics.updateVisitCountry error:", err);
+  }
+}
+
+export async function markVisitBot(id: string): Promise<void> {
+  try {
+    await getPool().query(`UPDATE visits SET is_bot = true WHERE id = $1`, [id]);
+  } catch (err) {
+    console.error("analytics.markVisitBot error:", err);
   }
 }
 
@@ -280,6 +290,10 @@ function rowsToCounts(rows: { [key: string]: unknown }[], key: string): { label:
   return rows.map((r) => ({ label: String(r[key]), count: Number(r.count) }));
 }
 
+function cleanCol(col: string): string {
+  return `NULLIF(NULLIF(NULLIF(TRIM(${col}), 'undefined'), 'null'), '')`;
+}
+
 export interface VisitStats {
   today: number;
   allTime: number;
@@ -310,25 +324,25 @@ export async function getVisitStats(): Promise<VisitStats> {
     `SELECT page, COUNT(*) AS count FROM visits GROUP BY page ORDER BY count DESC`
   );
   const { rows: byCountry } = await getPool().query(
-    `SELECT country, COUNT(*) AS count FROM visits WHERE country IS NOT NULL GROUP BY country ORDER BY count DESC`
+    `SELECT ${cleanCol("country")} AS country, COUNT(*) AS count FROM visits WHERE ${cleanCol("country")} IS NOT NULL GROUP BY country ORDER BY count DESC`
   );
   const { rows: byDevice } = await getPool().query(
-    `SELECT device, COUNT(*) AS count FROM visits WHERE device IS NOT NULL GROUP BY device ORDER BY count DESC`
+    `SELECT ${cleanCol("device")} AS device, COUNT(*) AS count FROM visits WHERE ${cleanCol("device")} IS NOT NULL GROUP BY device ORDER BY count DESC`
   );
   const { rows: byOs } = await getPool().query(
-    `SELECT os, COUNT(*) AS count FROM visits WHERE os IS NOT NULL GROUP BY os ORDER BY count DESC`
+    `SELECT ${cleanCol("os")} AS os, COUNT(*) AS count FROM visits WHERE ${cleanCol("os")} IS NOT NULL GROUP BY os ORDER BY count DESC`
   );
   const { rows: byBrowser } = await getPool().query(
-    `SELECT browser, COUNT(*) AS count FROM visits WHERE browser IS NOT NULL GROUP BY browser ORDER BY count DESC`
+    `SELECT ${cleanCol("browser")} AS browser, COUNT(*) AS count FROM visits WHERE ${cleanCol("browser")} IS NOT NULL GROUP BY browser ORDER BY count DESC`
   );
   const { rows: bySource } = await getPool().query(
-    `SELECT source, COUNT(*) AS count FROM visits WHERE source IS NOT NULL GROUP BY source ORDER BY count DESC`
+    `SELECT ${cleanCol("source")} AS source, COUNT(*) AS count FROM visits WHERE ${cleanCol("source")} IS NOT NULL GROUP BY source ORDER BY count DESC`
   );
   const { rows: byMedium } = await getPool().query(
-    `SELECT medium, COUNT(*) AS count FROM visits WHERE medium IS NOT NULL GROUP BY medium ORDER BY count DESC`
+    `SELECT ${cleanCol("medium")} AS medium, COUNT(*) AS count FROM visits WHERE ${cleanCol("medium")} IS NOT NULL GROUP BY medium ORDER BY count DESC`
   );
   const { rows: byCampaign } = await getPool().query(
-    `SELECT campaign, COUNT(*) AS count FROM visits WHERE campaign IS NOT NULL GROUP BY campaign ORDER BY count DESC`
+    `SELECT ${cleanCol("campaign")} AS campaign, COUNT(*) AS count FROM visits WHERE ${cleanCol("campaign")} IS NOT NULL GROUP BY campaign ORDER BY count DESC`
   );
   return {
     today,
@@ -376,25 +390,25 @@ export async function getChatStats(): Promise<ChatStats> {
     `SELECT mode, COUNT(*) AS count FROM chat_sessions WHERE mode IS NOT NULL GROUP BY mode ORDER BY count DESC`
   );
   const { rows: byCountry } = await getPool().query(
-    `SELECT country, COUNT(*) AS count FROM chat_sessions WHERE country IS NOT NULL GROUP BY country ORDER BY count DESC`
+    `SELECT ${cleanCol("country")} AS country, COUNT(*) AS count FROM chat_sessions WHERE ${cleanCol("country")} IS NOT NULL GROUP BY country ORDER BY count DESC`
   );
   const { rows: byDevice } = await getPool().query(
-    `SELECT device, COUNT(*) AS count FROM chat_sessions WHERE device IS NOT NULL GROUP BY device ORDER BY count DESC`
+    `SELECT ${cleanCol("device")} AS device, COUNT(*) AS count FROM chat_sessions WHERE ${cleanCol("device")} IS NOT NULL GROUP BY device ORDER BY count DESC`
   );
   const { rows: byOs } = await getPool().query(
-    `SELECT os, COUNT(*) AS count FROM chat_sessions WHERE os IS NOT NULL GROUP BY os ORDER BY count DESC`
+    `SELECT ${cleanCol("os")} AS os, COUNT(*) AS count FROM chat_sessions WHERE ${cleanCol("os")} IS NOT NULL GROUP BY os ORDER BY count DESC`
   );
   const { rows: byBrowser } = await getPool().query(
-    `SELECT browser, COUNT(*) AS count FROM chat_sessions WHERE browser IS NOT NULL GROUP BY browser ORDER BY count DESC`
+    `SELECT ${cleanCol("browser")} AS browser, COUNT(*) AS count FROM chat_sessions WHERE ${cleanCol("browser")} IS NOT NULL GROUP BY browser ORDER BY count DESC`
   );
   const { rows: bySource } = await getPool().query(
-    `SELECT source, COUNT(*) AS count FROM chat_sessions WHERE source IS NOT NULL GROUP BY source ORDER BY count DESC`
+    `SELECT ${cleanCol("source")} AS source, COUNT(*) AS count FROM chat_sessions WHERE ${cleanCol("source")} IS NOT NULL GROUP BY source ORDER BY count DESC`
   );
   const { rows: byMedium } = await getPool().query(
-    `SELECT medium, COUNT(*) AS count FROM chat_sessions WHERE medium IS NOT NULL GROUP BY medium ORDER BY count DESC`
+    `SELECT ${cleanCol("medium")} AS medium, COUNT(*) AS count FROM chat_sessions WHERE ${cleanCol("medium")} IS NOT NULL GROUP BY medium ORDER BY count DESC`
   );
   const { rows: byCampaign } = await getPool().query(
-    `SELECT campaign, COUNT(*) AS count FROM chat_sessions WHERE campaign IS NOT NULL GROUP BY campaign ORDER BY count DESC`
+    `SELECT ${cleanCol("campaign")} AS campaign, COUNT(*) AS count FROM chat_sessions WHERE ${cleanCol("campaign")} IS NOT NULL GROUP BY campaign ORDER BY count DESC`
   );
   return {
     today,
@@ -447,14 +461,22 @@ export interface RecentEvent {
   source?: string | null;
   medium?: string | null;
   campaign?: string | null;
+  isBot?: boolean | null;
   startedAt: string;
   endedAt?: string | null;
   active: boolean;
 }
 
+function cleanValue(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  if (!t || t === "undefined" || t === "null") return null;
+  return t;
+}
+
 export async function getRecent(limit = 10): Promise<{ visits: RecentEvent[]; chats: RecentEvent[] }> {
   const { rows: visits } = await getPool().query(
-    `SELECT session_id, page, country, ip, device, os, browser, source, medium, campaign, connected_at, disconnected_at FROM visits ORDER BY connected_at DESC LIMIT $1`,
+    `SELECT session_id, page, country, ip, device, os, browser, source, medium, campaign, is_bot, connected_at, disconnected_at FROM visits ORDER BY connected_at DESC LIMIT $1`,
     [limit]
   );
   const { rows: chats } = await getPool().query(
@@ -466,14 +488,15 @@ export async function getRecent(limit = 10): Promise<{ visits: RecentEvent[]; ch
       sessionId: r.session_id,
       label: r.page || "unknown",
       page: r.page,
-      country: r.country,
+      country: cleanValue(r.country),
       ip: r.ip,
-      device: r.device,
-      os: r.os,
-      browser: r.browser,
-      source: r.source,
-      medium: r.medium,
-      campaign: r.campaign,
+      device: cleanValue(r.device),
+      os: cleanValue(r.os),
+      browser: cleanValue(r.browser),
+      source: cleanValue(r.source),
+      medium: cleanValue(r.medium),
+      campaign: cleanValue(r.campaign),
+      isBot: r.is_bot || false,
       startedAt: r.connected_at,
       endedAt: r.disconnected_at,
       active: !r.disconnected_at,
@@ -482,14 +505,15 @@ export async function getRecent(limit = 10): Promise<{ visits: RecentEvent[]; ch
       sessionId: r.session_id,
       label: r.mode || "unknown",
       mode: r.mode,
-      country: r.country,
+      country: cleanValue(r.country),
       ip: r.ip,
-      device: r.device,
-      os: r.os,
-      browser: r.browser,
-      source: r.source,
-      medium: r.medium,
-      campaign: r.campaign,
+      device: cleanValue(r.device),
+      os: cleanValue(r.os),
+      browser: cleanValue(r.browser),
+      source: cleanValue(r.source),
+      medium: cleanValue(r.medium),
+      campaign: cleanValue(r.campaign),
+      isBot: false,
       startedAt: r.chat_started_at,
       endedAt: r.chat_ended_at,
       active: !r.chat_ended_at,

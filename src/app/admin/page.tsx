@@ -49,8 +49,8 @@ interface Stats {
   };
   trend: { day: string; visits: number; chats: number }[];
   recent: {
-    visits: { sessionId: string | null; label: string; country: string | null; ip: string | null; device: string | null; os: string | null; browser: string | null; source: string | null; medium: string | null; campaign: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
-    chats: { sessionId: string | null; label: string; country: string | null; ip: string | null; device: string | null; os: string | null; browser: string | null; source: string | null; medium: string | null; campaign: string | null; startedAt: string; endedAt: string | null; active: boolean }[];
+    visits: { sessionId: string | null; label: string; country: string | null; ip: string | null; device: string | null; os: string | null; browser: string | null; source: string | null; medium: string | null; campaign: string | null; isBot: boolean; startedAt: string; endedAt: string | null; active: boolean }[];
+    chats: { sessionId: string | null; label: string; country: string | null; ip: string | null; device: string | null; os: string | null; browser: string | null; source: string | null; medium: string | null; campaign: string | null; isBot: boolean; startedAt: string; endedAt: string | null; active: boolean }[];
   };
   updatedAt: number;
 }
@@ -136,6 +136,12 @@ function ActivityList({ items, type }: { items: Stats["recent"]["visits"]; type:
             {it.label || type}
           </span>
           {it.country && <span title={it.country}>{countryToFlag(it.country)}</span>}
+          {it.isBot && (
+            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-semibold uppercase"
+              title="Disconnected in under a second — likely a bot or health check">
+              bot
+            </span>
+          )}
           <span className="text-zinc-500">{formatSupportDate(new Date(it.startedAt).getTime())}</span>
           <span className={it.active ? "text-green-600 dark:text-green-400" : "text-zinc-500 dark:text-zinc-600"}>
             {it.active ? "online" : it.endedAt ? formatSupportDate(new Date(it.endedAt).getTime()) : ""}
