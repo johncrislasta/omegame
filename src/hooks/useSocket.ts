@@ -40,18 +40,24 @@ function getDeviceInfo(): { device: string; os: string; browser: string } {
 
   let os = "unknown";
   if (/Windows NT/i.test(ua)) os = "Windows";
+  else if (/iPhone|iPad|iPod/i.test(ua)) os = "iOS";
   else if (/Mac OS X|Macintosh/i.test(ua)) os = "macOS";
   else if (/Android/i.test(ua)) os = "Android";
-  else if (/iPhone|iPad|iPod/i.test(ua)) os = "iOS";
   else if (/CrOS/i.test(ua)) os = "ChromeOS";
   else if (/Linux/i.test(ua)) os = "Linux";
 
   let browser = "unknown";
   if (/Edg\//i.test(ua)) browser = "Edge";
   else if (/OPR\/|Opera/i.test(ua)) browser = "Opera";
+  else if (/CriOS\//i.test(ua)) browser = "Chrome";
+  else if (/FxiOS\//i.test(ua)) browser = "Firefox";
   else if (/Firefox\//i.test(ua)) browser = "Firefox";
   else if (/Chrome\//i.test(ua)) browser = "Chrome";
   else if (/Safari\//i.test(ua)) browser = "Safari";
+  else {
+    const raw = ua.match(/(?:CriOS|FxiOS|EdgiOS|Version|Safari|OPT)\/[\d.]+/i);
+    if (raw) browser = raw[0];
+  }
 
   return { device, os, browser };
 }
@@ -77,9 +83,14 @@ export function useSocket() {
     const country = sessionStorage.getItem("country") || undefined;
     const { device, os, browser } = getDeviceInfo();
     const { utmSource, utmMedium, utmCampaign } = getUtmInfo();
+    const query: Record<string, string> = { page };
+    if (sessionId) query.sessionId = sessionId;
+    for (const [key, value] of Object.entries({ country, device, os, browser, utmSource, utmMedium, utmCampaign })) {
+      if (value) query[key] = value;
+    }
     const socket = io(SOCKET_URL, {
       transports: ["websocket", "polling"],
-      query: { sessionId, page, country, device, os, browser, utmSource, utmMedium, utmCampaign },
+      query,
     });
     socketRef.current = socket;
 

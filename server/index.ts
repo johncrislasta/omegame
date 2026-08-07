@@ -4,6 +4,7 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 import { SocketTracker } from "../src/lib/socketTracking";
 import { ensureTables, cleanupOrphaned, setLiveCount, maybeSaveLiveSnapshot } from "../src/lib/analytics";
+import { countryFromIp } from "../src/lib/geo";
 
 const port = parseInt(process.env.PORT || "3001", 10);
 const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
@@ -33,6 +34,13 @@ function getClientIp(socket: Socket): string | undefined {
   const raw = (forwarded || socket.handshake.address || "").trim();
   if (!raw) return undefined;
   return raw.replace(/^::ffff:/, "") || undefined;
+}
+
+function cleanParam(v: unknown): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const t = v.trim();
+  if (!t || t === "undefined" || t === "null") return undefined;
+  return t;
 }
 
 function broadcastOnlineCount() {
@@ -186,16 +194,16 @@ io.on("connection", (socket) => {
   const q = socket.handshake.query;
   socket.data.sessionId = tracker.onConnection(
     socket.id,
-    typeof q.sessionId === "string" ? q.sessionId : undefined,
-    typeof q.page === "string" ? q.page : "unknown",
-    typeof q.country === "string" ? q.country : undefined,
+    cleanParam(q.sessionId),
+    cleanParam(q.page) || "unknown",
+    cleanParam(q.country) || countryFromIp(getClientIp(socket)),
     getClientIp(socket),
-    typeof q.device === "string" ? q.device : undefined,
-    typeof q.os === "string" ? q.os : undefined,
-    typeof q.browser === "string" ? q.browser : undefined,
-    typeof q.utmSource === "string" ? q.utmSource : undefined,
-    typeof q.utmMedium === "string" ? q.utmMedium : undefined,
-    typeof q.utmCampaign === "string" ? q.utmCampaign : undefined
+    cleanParam(q.device),
+    cleanParam(q.os),
+    cleanParam(q.browser),
+    cleanParam(q.utmSource),
+    cleanParam(q.utmMedium),
+    cleanParam(q.utmCampaign)
   );
   broadcastOnlineCount();
   console.log(`[Server] User connected: ${socket.id}`);
@@ -217,12 +225,12 @@ io.on("connection", (socket) => {
       mode,
       userCountry.get(socket.id),
       getClientIp(socket),
-      typeof q.device === "string" ? q.device : undefined,
-      typeof q.os === "string" ? q.os : undefined,
-      typeof q.browser === "string" ? q.browser : undefined,
-      typeof q.utmSource === "string" ? q.utmSource : undefined,
-      typeof q.utmMedium === "string" ? q.utmMedium : undefined,
-      typeof q.utmCampaign === "string" ? q.utmCampaign : undefined
+      cleanParam(q.device),
+      cleanParam(q.os),
+      cleanParam(q.browser),
+      cleanParam(q.utmSource),
+      cleanParam(q.utmMedium),
+      cleanParam(q.utmCampaign)
     );
     broadcastOnlineCount();
     console.log(`[Server] ${socket.id} looking for stranger (${mode})`);
