@@ -15,6 +15,7 @@
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
     "@paypal/react-paypal-js": "^10.2.1",
+    "geoip-lite": "^2.0.3",
     "next": "16.2.12",
     "pg": "^8.22.0",
     "react": "19.2.4",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/geoip-lite": "^1.4.4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",

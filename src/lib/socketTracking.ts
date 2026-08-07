@@ -30,15 +30,18 @@ export class SocketTracker {
     campaign?: string
   ): string {
     if (!sessionId) sessionId = `sock:${socketId}`;
+    const persist = !sessionId.startsWith("sock:");
     let set = this.sessions.get(sessionId);
     if (!set) {
       set = new Set();
       this.sessions.set(sessionId, set);
-      createVisit(sessionId, page || "unknown", country, ip, device, os, browser, source, medium, campaign).then((rowId) => {
-        if (rowId && this.sessions.has(sessionId)) {
-          this.visitRows.set(sessionId, rowId);
-        }
-      });
+      if (persist) {
+        createVisit(sessionId, page || "unknown", country, ip, device, os, browser, source, medium, campaign).then((rowId) => {
+          if (rowId && this.sessions.has(sessionId)) {
+            this.visitRows.set(sessionId, rowId);
+          }
+        });
+      }
     }
     set.add(socketId);
     return sessionId;
